@@ -9,7 +9,7 @@ def compute_quadrature_scheme(r: int, dt: float) -> tuple[Array, Array, Array]:
     """
     Compute the collocation points, weights, and derivative matrix for the GGL quadrature.
 
-    :param r: The number of interior points in the quadrature over the phase space.
+    :param r: The number of interior points in the quadrature.
     :param dt: The timestep of the integrator.
     :return: The collocation points, weights, and derivative matrix as jax arrays.
     """
