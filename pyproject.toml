@@ -4,14 +4,13 @@ version = "0.1.0"
 description = ""
 authors = ["Joshua Coles <josh@coles.to>"]
 readme = "README.md"
-packages = [{include = "slimplectic_jax"}]
+packages = [{ include = "slimplectic_jax" }]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-jax-metal = "^0.0.4"
-
+python = "<3.13,>=3.9"
+jax = "^0.4.18"
+jaxopt = "^0.8.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
