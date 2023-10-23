@@ -59,46 +59,37 @@ jax.debug.print("q_dot_from_q_through_phi {}", q_dot_from_q_through_phi(
 
 
 @partial(jit, static_argnums=(0, 1))
-def discretise_lagrangian(
-        lagrangian: Callable[[Array, Array, float], float],
+def evaluate_discrete_non_conservative_lagrangian(
+        lagrangian: Callable[[Array, Array, Array, Array, float], float],
         _r: int,
 
         _collation_points: Array,
         weights: Array,
         derivative_matrix: Array,
 
-        qn_i: Array,
+        qn_plus_i: Array,
+        qn_minus_i: Array,
         tn_i: Array,
 ):
-    qn_dot_i = q_dot_from_q_through_phi(qn_i, derivative_matrix)
+    qn_plus_dot_i = q_dot_from_q_through_phi(qn_plus_i, derivative_matrix)
+    qn_minus_dot_i = q_dot_from_q_through_phi(qn_minus_i, derivative_matrix)
 
     method_a = jnp.dot(
         weights,
         jax.vmap(
-            lambda stack: lagrangian(stack[0], stack[1], stack[2]),
+            lambda stack: lagrangian(stack[0], stack[1], stack[2], stack[3], stack[4]),
             in_axes=0,
             out_axes=0,
         )(
-            jnp.stack([qn_i, qn_dot_i, tn_i], axis=1)
+            jnp.stack([qn_plus_dot_i, qn_minus_dot_i, qn_plus_dot_i, qn_minus_dot_i, tn_i], axis=1)
         )
     )
-
-    # # TODO: Is this better expressed as some from of vstack and vmap and sum, maybe more parallelisable?
-    # method_b = jax.lax.fori_loop(
-    #     0,
-    #     r + 2,
-    #     # TODO: In the original code there is an additional factor of 0.5 * ddt here (cancelling the 2 / ddt above in
-    #     #  q_dot_from_q_through_phi) why?
-    #     # TODO: Check these parameters are right, should they be offset by q_n?
-    #     lambda i, acc: acc + weights[i] * lagrangian(qn_i[i], qn_dot_i[i], tn_i[i]),
-    #     0.0
-    # )
 
     return method_a  # , method_b
 
 
 @partial(jit, static_argnums=(0, 1))
-def discretise_lagrangian(
+def evaluate_discrete_lagrangian(
         lagrangian: Callable[[Array, Array, float], float],
         _r: int,
 
@@ -136,10 +127,19 @@ def discretise_lagrangian(
     return method_a  # , method_b
 
 
-jax.debug.print("DL {}", discretise_lagrangian(
+jax.debug.print("DL {}", evaluate_discrete_lagrangian(
     conservative_lagrangian,
     2,
     *compute_quadrature_scheme(2, 0.1),
+    jnp.array([1.0, 2.0, 3.0, 4.0]),
+    jnp.array([1.0, 2.0, 3.0, 4.0]),
+))
+
+jax.debug.print("NC_DL {}", evaluate_discrete_non_conservative_lagrangian(
+    non_conservative_lagrangian,
+    2,
+    *compute_quadrature_scheme(2, 0.1),
+    jnp.array([1.0, 2.0, 3.0, 4.0]),
     jnp.array([1.0, 2.0, 3.0, 4.0]),
     jnp.array([1.0, 2.0, 3.0, 4.0]),
 ))
