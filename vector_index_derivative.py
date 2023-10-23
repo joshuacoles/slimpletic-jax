@@ -1,5 +1,4 @@
 import jax
-import jaxopt
 import jax.numpy as jnp
 from jax import jit, Array
 
@@ -31,7 +30,7 @@ def take_vector_grad(f, i, arg='q'):
 
     dfdi = jax.grad(jit(f_with_i_pulled_out), argnums=0)
 
-    return lambda q_vec, q_dot_vec, t: dfdi(q_vec[i], q_vec, q_dot_vec, t)
+    return jit(lambda q_vec, q_dot_vec, t: dfdi(q_vec[i], q_vec, q_dot_vec, t))
 
 
 dl_dq = take_vector_grad(L, 0, arg='q')
