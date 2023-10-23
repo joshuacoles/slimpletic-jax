@@ -24,6 +24,7 @@ def compute_quadrature_scheme(r: int, dt: float) -> tuple[Array, Array, Array]:
 
     jax.debug.print("ws {}", leg_xs)
 
+    # TODO: Is there a nicer way to do this? Maybe jax.lax.switch?
     @jit
     def derivative_matrix_element(i_, j_):
         # For some reason we get floats here, convert to ints for indexing.
