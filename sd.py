@@ -2,6 +2,8 @@ import jax
 import jaxopt
 from jax import numpy as jnp
 
+from discretise import take_vector_grad
+
 
 def o_system(x, additional_arg):
     a = additional_arg * x[0]
@@ -14,7 +16,9 @@ def o_system(x, additional_arg):
 
 
 def form_system(
-        r: int
+        r: int,
+        ld,
+        dof: int = 2,
 ):
     def system(
             qi_n,
@@ -22,14 +26,22 @@ def form_system(
             pi_n,
             t_n,
             dt,
-            r
     ):
-        a = qi_n[0]
-        b = qi_n[1]
+        eom_13a = [
+            pi_n[d] + differentiate(ld, wrt=['q', d])(qi_n, q_n, pi_n, t_n, dt)
+            for d in range(dof)
+        ]
+
+        eom_13c = [
+            pi_n[d] + differentiate(ld, wrt=['qi', d, i])(qi_n, q_n, pi_n, t_n, dt)
+            # Interior points
+            for i in range(1, r + 1)
+            for d in range(dof)
+        ]
 
         return jnp.array([
-            10 * (6 * b ** 4 - a ** 2),
-            1 + 2 * a
+            *eom_13a,
+            *eom_13c
         ])
 
     return system
@@ -40,11 +52,13 @@ system = form_system(
 )
 
 gn = jaxopt.GaussNewton(residual_fun=system)
-gn_sol = gn.run(
-    jnp.array([1.0, 2.0])
+qi_soln = gn.run(
+    jnp.array([1.0, 2.0]),
+    pi_0 = ...,
+
 ).params
 jax.debug.print(
     "sol = {} with f(sol) = {}",
-    gn_sol,
-    system(gn_sol)
+    qi_soln,
+    system(qi_soln)
 )

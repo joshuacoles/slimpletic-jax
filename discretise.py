@@ -103,7 +103,7 @@ def form_discrete_lagrangian(
     ):
         qn_dot_i = q_dot_from_q_through_phi(qn_i, derivative_matrix)
 
-        method_a = jnp.dot(
+        return jnp.dot(
             weights,
             jax.vmap(
                 lambda stack: lagrangian(stack[0], stack[1], stack[2]),
@@ -113,8 +113,6 @@ def form_discrete_lagrangian(
                 jnp.stack([qn_i, qn_dot_i, tn_i], axis=1)
             )
         )
-
-        return method_a
 
     return discrete_lagrangian
 
@@ -166,48 +164,48 @@ jax.debug.print("DL {}", evaluate_discrete_lagrangian(
     jnp.array([1.0, 2.0, 3.0, 4.0]),
 ))
 
-jax.debug.print("NC_DL {}", evaluate_discrete_non_conservative_lagrangian(
-    non_conservative_lagrangian,
-    2,
-    *compute_quadrature_scheme(2, 0.1),
-    jnp.array([1.0, 2.0, 3.0, 4.0]),
-    jnp.array([1.0, 2.0, 3.0, 4.0]),
-    jnp.array([1.0, 2.0, 3.0, 4.0]),
-))
+# jax.debug.print("NC_DL {}", evaluate_discrete_non_conservative_lagrangian(
+#     non_conservative_lagrangian,
+#     2,
+#     *compute_quadrature_scheme(2, 0.1),
+#     jnp.array([1.0, 2.0, 3.0, 4.0]),
+#     jnp.array([1.0, 2.0, 3.0, 4.0]),
+#     jnp.array([1.0, 2.0, 3.0, 4.0]),
+# ))
 
-discrete_lagrangian = form_discrete_lagrangian(conservative_lagrangian, 2, *compute_quadrature_scheme(2, 0.1), )
-jax.debug.print("F_D_L {}", discrete_lagrangian(
-    jnp.array([1.0, 2.0, 3.0, 4.0]),
-    jnp.array([1.0, 2.0, 3.0, 4.0])
-))
-
-
-def take_vector_grad(f, i, arg='q'):
-    if arg == 'q':
-        def f_with_i_pulled_out(q_i, q_vec: Array, q_dot_vec, t):
-            return f(q_vec.at[i].set(q_i), q_dot_vec, t)
-    elif arg == 'q_dot':
-        def f_with_i_pulled_out(q_dot_i, q_vec: Array, q_dot_vec, t):
-            return f(q_vec, q_dot_vec.at[i].set(q_dot_i), t)
-    else:
-        raise ValueError(f"arg must be 'q' or 'q_dot', got {arg}")
-
-    dfdi = jax.grad(jit(f_with_i_pulled_out), argnums=0)
-
-    return jit(lambda q_vec, q_dot_vec, t: dfdi(q_vec[i], q_vec, q_dot_vec, t))
-
-
-def interior_point_eom(
-        discrete_lagrangian,
-        discrete_non_conservative_lagrangian,
-        r: int
-):
-    @jit
-    def eom(qn_i):
-        return jnp.array([
-            jax.grad(discrete_lagrangian, argnums=(0,))(*qn_i) +
-            take_vector_grad(discrete_non_conservative_lagrangian, i, arg='q')(qn_i, qn_i, qn_i, qn_i, 0.0)
-
-            # Interior points
-            for i in range(1, r + 1)
-        ])
+# discrete_lagrangian = form_discrete_lagrangian(conservative_lagrangian, 2, *compute_quadrature_scheme(2, 0.1), )
+# jax.debug.print("F_D_L {}", discrete_lagrangian(
+#     jnp.array([1.0, 2.0, 3.0, 4.0]),
+#     jnp.array([1.0, 2.0, 3.0, 4.0])
+# ))
+#
+#
+# def take_vector_grad(f, i, arg='q'):
+#     if arg == 'q':
+#         def f_with_i_pulled_out(q_i, q_vec: Array, q_dot_vec, t):
+#             return f(q_vec.at[i].set(q_i), q_dot_vec, t)
+#     elif arg == 'q_dot':
+#         def f_with_i_pulled_out(q_dot_i, q_vec: Array, q_dot_vec, t):
+#             return f(q_vec, q_dot_vec.at[i].set(q_dot_i), t)
+#     else:
+#         raise ValueError(f"arg must be 'q' or 'q_dot', got {arg}")
+#
+#     dfdi = jax.grad(jit(f_with_i_pulled_out), argnums=0)
+#
+#     return jit(lambda q_vec, q_dot_vec, t: dfdi(q_vec[i], q_vec, q_dot_vec, t))
+#
+#
+# def interior_point_eom(
+#         discrete_lagrangian,
+#         discrete_non_conservative_lagrangian,
+#         r: int
+# ):
+#     @jit
+#     def eom(qn_i):
+#         return jnp.array([
+#             jax.grad(discrete_lagrangian, argnums=(0,))(*qn_i) +
+#             take_vector_grad(discrete_non_conservative_lagrangian, i, arg='q')(qn_i, qn_i, qn_i, qn_i, 0.0)
+#
+#             # Interior points
+#             for i in range(1, r + 1)
+#         ])
