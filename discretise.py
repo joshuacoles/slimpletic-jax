@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from jax import jit, Array
 from jax.experimental import checkify
 
-from dj import compute_quadrature_scheme
+from ggl import compute_quadrature_scheme
 
 m = 1.0
 k = 1.0

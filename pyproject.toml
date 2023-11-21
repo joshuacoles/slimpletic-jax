@@ -10,6 +10,7 @@ packages = [{ include = "slimplectic_jax" }]
 python = "<3.13,>=3.9"
 jax = "^0.4.18"
 jaxopt = "^0.8.0"
+jupyter = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]
