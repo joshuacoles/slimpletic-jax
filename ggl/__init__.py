@@ -21,6 +21,9 @@ def ggl(r: int):
         - derivative_matrix = (2 / dt) * derivative_matrix_reduced
     """
     legendre = jnp.array(sps.legendre(r + 1).c)
+
+    # (x^2 - 1) * d/dx(P_{r + 1}(x))
+    # QUESTION: Why is this multiplied by (x^2 - 1)?
     poly = jnp.polymul(
         jnp.array([1, 0, -1]),
         jnp.polyder(legendre)
