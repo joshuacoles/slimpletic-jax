@@ -63,3 +63,8 @@ def ggl(r: int):
     )
 
     return xs, ws, derivative_matrix
+
+
+def dereduce(values, dt):
+    xs, ws, derivative_matrix = values
+    return xs, (dt / 2) * ws, (2 / dt) * derivative_matrix
