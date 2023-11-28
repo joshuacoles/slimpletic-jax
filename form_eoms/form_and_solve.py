@@ -42,31 +42,63 @@ def single_step(
     return opt_res.params
 
 
+def fill_out_initial(initial, r):
+    return jnp.repeat(initial[jnp.newaxis, :], r + 2, axis=0)
+
+
+def test_fill_out_initial():
+    assert jnp.array_equal(
+        fill_out_initial(
+            initial=jnp.array([1, 2, 3]),
+            r=3
+        ),
+        jnp.array([
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+        ])
+    )
+
 def iterate(
         q0: Array,
         t0: float,
-        t_step: float,
-        t_samples: int,
-        r: int,
         dt: float,
+        t_sample_count: int,
+        r: int,
         lagrangian: Callable[[Array, Array, float], float],
 ):
-    path = jnp.array([])
-    # TODO: Okay I have over spec'ed, dt and t_step are the same thing. See Eq 4
-    for n in range(t_samples):
-        qi = single_step(
-            q0=q0,
-            t0=t0 + n * t_step,
-            f_d=discretise_integral(
-                r=r,
-                dt=dt,
-                fn=lagrangian,
-            ),
-            r=2,
+    lagrangian_d = discretise_integral(
+        fn=lagrangian,
+        r=r,
+        dt=dt
+    )
+
+    t_samples = t0 + jnp.arange(t_sample_count) * dt
+
+    def scan_body_2(
+            previous_q,
+            t_value
+    ):
+        jax.debug.print("previous_state {}", previous_q)
+        jax.debug.print("t_value {}", t_value)
+
+        qi_values = single_step(
+            qi=fill_out_initial(previous_q, r=r),
+            t0=t_value,
+            r=r,
+            f_d=lagrangian_d
         )
 
-        path = jnp.append(path, qi)
+        jax.debug.print("qi_values {}", qi_values)
 
-        # Final value
-        q0 = qi[-1]
-    pass
+        return qi_values[-1], qi_values
+
+    _, results = jax.lax.scan(
+        f=scan_body_2,
+        xs=t_samples,
+        init=q0,
+    )
+
+    return results

@@ -13,6 +13,7 @@ jaxopt = "^0.8.0"
 jupyter = "^1.0.0"
 sympy = "^1.12"
 pytest = "^7.4.3"
+altair = "^5.2.0"
 
 [build-system]
 requires = ["poetry-core"]
