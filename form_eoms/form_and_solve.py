@@ -43,7 +43,7 @@ def single_step(
         r: int,
         qi: Array = None,
 ):
-    optimiser = jaxopt.GaussNewton(residual_fun=make_residue(f_d), verbose=True)
+    optimiser = jaxopt.GaussNewton(residual_fun=make_residue(f_d))#, verbose=True)
 
     opt_res = optimiser.run(qi, t0, pi0)
 
