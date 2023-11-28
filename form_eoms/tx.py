@@ -1,5 +1,11 @@
+# NOTE: THIS IS IMPORTANT
+# Else the values will not agree with the original code.
+from jax import config
 import jax
 import jax.numpy as jnp
+
+config.update("jax_enable_x64", True)
+
 from form_eoms.form_and_solve import iterate
 
 m = 10
@@ -13,6 +19,7 @@ def lagrangian(q, dq, t):
 
 a = iterate(
     q0=jnp.array([10.3]),
+    pi0=jnp.array([1.0]),
     r=1,
     lagrangian=lagrangian,
     t_sample_count=100,

@@ -20,23 +20,32 @@ def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float]
     """
     derivatives = jax.grad(fn, argnums=0)
 
-    def residue(q_vec, t):
+    def residue(q_vec, t, pi0):
         dfdx = derivatives(q_vec, t)
-        inner = dfdx[1:-1]
-        return jnp.append(inner, dfdx[0] - dfdx[-1])
+
+        # Eq 13(c), we set the derivative wrt to each interior point to zero
+        eq13c_residues = dfdx[1:-1]
+
+        eq13a_residue = pi0 - dfdx[0]
+
+        return jnp.append(
+            eq13c_residues,
+            eq13a_residue
+        )
 
     return residue
 
 
 def single_step(
         t0: float,
+        pi0: Array,
         f_d: Callable[[Array, float], float],
         r: int,
         qi: Array = None,
 ):
     optimiser = jaxopt.GaussNewton(residual_fun=make_residue(f_d), verbose=True)
 
-    opt_res = optimiser.run(qi, t0)
+    opt_res = optimiser.run(qi, t0, pi0)
 
     # Return the values of q_i representing the path of the system which minimises the residue.
     return opt_res.params
@@ -61,8 +70,10 @@ def test_fill_out_initial():
         ])
     )
 
+
 def iterate(
         q0: Array,
+        pi0: Array,
         t0: float,
         dt: float,
         t_sample_count: int,
@@ -77,15 +88,23 @@ def iterate(
 
     t_samples = t0 + jnp.arange(t_sample_count) * dt
 
+    def compute_pi_next(qi_values, t_value):
+        derivatives = jax.grad(lagrangian_d, argnums=0)
+        v = derivatives(qi_values, t_value)[-1]
+        return v
+
     def scan_body_2(
-            previous_q,
+            previous_state,
             t_value
     ):
-        jax.debug.print("previous_state {}", previous_q)
+        (previous_q, previous_pi) = previous_state
+
+        jax.debug.print("previous_q {}\nprevious_pi {}", previous_q, previous_pi)
         jax.debug.print("t_value {}", t_value)
 
         qi_values = single_step(
             qi=fill_out_initial(previous_q, r=r),
+            pi0=previous_pi,
             t0=t_value,
             r=r,
             f_d=lagrangian_d
@@ -93,12 +112,15 @@ def iterate(
 
         jax.debug.print("qi_values {}", qi_values)
 
-        return qi_values[-1], qi_values
+        q_next = qi_values[-1]
+        pi_next = compute_pi_next(qi_values, t_value)
+
+        return (q_next, pi_next), qi_values
 
     _, results = jax.lax.scan(
         f=scan_body_2,
         xs=t_samples,
-        init=q0,
+        init=(q0, pi0),
     )
 
     return results
