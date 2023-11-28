@@ -5,6 +5,8 @@ import jax.numpy as jnp
 import jaxopt
 from jax import Array
 
+from discretise.fn_3 import discretise_integral
+
 
 def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float], Array]:
     """
@@ -27,17 +29,44 @@ def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float]
 
 
 def single_step(
-        q0: Array,
         t0: float,
         f_d: Callable[[Array, float], float],
         r: int,
+        qi: Array = None,
 ):
-    # Repeated the provided initial condition r + 2 times.
-    qi = jnp.repeat(q0[jnp.newaxis, :], r + 2, axis=0)
-
     optimiser = jaxopt.GaussNewton(residual_fun=make_residue(f_d), verbose=True)
 
     opt_res = optimiser.run(qi, t0)
 
     # Return the values of q_i representing the path of the system which minimises the residue.
     return opt_res.params
+
+
+def iterate(
+        q0: Array,
+        t0: float,
+        t_step: float,
+        t_samples: int,
+        r: int,
+        dt: float,
+        lagrangian: Callable[[Array, Array, float], float],
+):
+    path = jnp.array([])
+    # TODO: Okay I have over spec'ed, dt and t_step are the same thing. See Eq 4
+    for n in range(t_samples):
+        qi = single_step(
+            q0=q0,
+            t0=t0 + n * t_step,
+            f_d=discretise_integral(
+                r=r,
+                dt=dt,
+                fn=lagrangian,
+            ),
+            r=2,
+        )
+
+        path = jnp.append(path, qi)
+
+        # Final value
+        q0 = qi[-1]
+    pass
