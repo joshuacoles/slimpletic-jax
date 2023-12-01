@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import jaxopt
 from jax import Array
 
-from discretise.fn_3 import discretise_integral
+from discretise import discretise_integral
 
 
 def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float], Array]:
@@ -86,9 +86,11 @@ def iterate(
         dt=dt
     )
 
+    # Eq 4
     t_samples = t0 + jnp.arange(t_sample_count) * dt
 
     def compute_pi_next(qi_values, t_value):
+        # Eq 13(b)
         derivatives = jax.grad(lagrangian_d, argnums=0)
         v = derivatives(qi_values, t_value)[-1]
         return v

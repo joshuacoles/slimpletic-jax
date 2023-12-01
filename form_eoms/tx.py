@@ -1,4 +1,4 @@
-from jax import config
+from jax import config, Array
 from jax import numpy as jnp
 
 # NOTE: THIS IS IMPORTANT

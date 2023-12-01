@@ -1,38 +1,40 @@
+import jax
 import jax.numpy as jnp
-from jax import Array
-from sympy import Symbol, lambdify
 
 from ggl import ggl, dereduce
-from original.slimplectic_GGL import DM_Sum
+
+__all__ = [
+    'discretise_integral',
+]
 
 
-def compute_qdotvec_from_qvec(
-        qvec: Array,
-        derivative_matrix: Array,
-):
-    return jnp.matmul(derivative_matrix, qvec)
+# Corresponds with Eq. 7 in the paper.
+def discretise_integral(
+        r: int,
+        dt: float,
+        fn: callable,
+) -> callable:
+    """
+    :param r: The order of the method.
+    :param fn: The function to discretise.
+    :return: A callable which takes a vector of q values and returns a vector of q dot values.
+    """
+    xs, ws, dij = dereduce(ggl(r), dt)
 
+    def discretised_fn(qi_vec, t0):
+        # Eq. 6
+        qidot_vec = jax.numpy.matmul(dij, qi_vec)
 
-class GGLDefs:
-    pass
+        # Eq. 4
+        t_values = t0 + (1 + xs) * dt / 2
 
+        # Eq. 7
+        return jnp.dot(ws, jax.vmap(
+            fn
+        )(
+            qi_vec,
+            qidot_vec,
+            t_values,
+        ))
 
-def test_derivative_computation():
-    r = 3
-    dof = 4
-    dt = 0.1
-
-    qvec = jnp.arange(r * dof).reshape((r, dof))
-    derivative_matrix = dereduce(ggl(r), 0.1)[2]
-
-    qdotvec = compute_qdotvec_from_qvec(qvec, derivative_matrix)
-
-    DM = GGLDefs(r)[2]
-
-    q_symbol = Symbol('q')
-    ddt_symbol = Symbol('ddt')
-    qdotvec_original_sym = [DM_Sum(DMvec, q_symbol) * 2 / ddt_symbol for DMvec in DM]
-    qdotvec_original = lambdify([q_symbol, ddt_symbol], qdotvec_original_sym)(qvec, dt)
-
-    assert jnp.allclose(qdotvec, qdotvec_original)
-
+    return discretised_fn

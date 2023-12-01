@@ -1,11 +1,16 @@
-from jax import Array, jit, grad
+from jax import Array, jit
 
 import jax.lax
 import jax.numpy as jnp
 import scipy.special as sps
 
+__all__ = [
+    'ggl',
+    'dereduce',
+]
 
-def ggl(r: int):
+
+def ggl(r: int) -> tuple[Array, Array, Array]:
     """
     Compute the GGL quadrature information for a given order.
     :param r: The order of the quadrature, must be an int >= 0.
@@ -68,3 +73,17 @@ def ggl(r: int):
 def dereduce(values, dt):
     xs, ws, derivative_matrix = values
     return xs, (dt / 2) * ws, (2 / dt) * derivative_matrix
+
+
+def test_ggl():
+    from ggl.helpers import jax_enable_x64, floatify1, floatify2
+
+    jax_enable_x64()
+    for r in range(0, 20):
+        from original.slimplectic_GGL import GGLdefs
+        original_xs, original_ws, original_dij = GGLdefs(r)
+        new_xs, new_ws, new_dij = ggl(r)
+
+        assert jnp.allclose(floatify1(original_xs), new_xs)
+        assert jnp.allclose(floatify1(original_ws), new_ws)
+        assert jnp.allclose(floatify2(original_dij), new_dij)
