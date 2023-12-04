@@ -36,21 +36,6 @@ def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float]
     return residue
 
 
-def single_step(
-        t0: float,
-        pi0: Array,
-        f_d: Callable[[Array, float], float],
-        r: int,
-        qi: Array = None,
-):
-    optimiser = jaxopt.GaussNewton(residual_fun=make_residue(f_d))#, verbose=True)
-
-    opt_res = optimiser.run(qi, t0, pi0)
-
-    # Return the values of q_i representing the path of the system which minimises the residue.
-    return opt_res.params
-
-
 def fill_out_initial(initial, r):
     return jnp.repeat(initial[jnp.newaxis, :], r + 2, axis=0)
 
@@ -89,13 +74,18 @@ def iterate(
     # Eq 4
     t_samples = t0 + jnp.arange(t_sample_count) * dt
 
+    # TODO: TEST THIS
     def compute_pi_next(qi_values, t_value):
         # Eq 13(b)
         derivatives = jax.grad(lagrangian_d, argnums=0)
         v = derivatives(qi_values, t_value)[-1]
         return v
 
-    def scan_body_2(
+    # Set up the residual function and optimiser once as they can be reused.
+    residue = make_residue(lagrangian_d)
+    optimiser = jaxopt.GaussNewton(residual_fun=residue)
+
+    def compute_next(
             previous_state,
             t_value
     ):
@@ -104,23 +94,24 @@ def iterate(
         jax.debug.print("previous_q {}\nprevious_pi {}", previous_q, previous_pi)
         jax.debug.print("t_value {}", t_value)
 
-        qi_values = single_step(
-            qi=fill_out_initial(previous_q, r=r),
-            pi0=previous_pi,
-            t0=t_value,
-            r=r,
-            f_d=lagrangian_d
+        optimiser_result = optimiser.run(
+            fill_out_initial(previous_q, r=r),
+            t0,
+            pi0
         )
+
+        qi_values = optimiser_result.params
 
         jax.debug.print("qi_values {}", qi_values)
 
+        # q_{n, r + 1} = q_{n + 1, 0}
         q_next = qi_values[-1]
         pi_next = compute_pi_next(qi_values, t_value)
 
-        return (q_next, pi_next), qi_values
+        return (q_next, pi_next), (q_next, pi_next)
 
     _, results = jax.lax.scan(
-        f=scan_body_2,
+        f=compute_next,
         xs=t_samples,
         init=(q0, pi0),
     )
