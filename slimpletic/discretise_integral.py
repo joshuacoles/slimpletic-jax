@@ -20,7 +20,7 @@ def test_range_of_quadrature_points():
         _, t_quadrature_offsets = discretise_integral(
             r=r,
             dt=dt,
-            fn=lambda q, qdot, t: 0
+            fn=lambda _, __, ___: 0
         )
 
         assert jnp.all(t_quadrature_offsets >= 0)
@@ -51,7 +51,6 @@ def discretise_integral(
     # Eq. 4
     # These are the offsets **within** [t0, t0 + dt] which we evaluate the function at to compute the integral.
     t_quadrature_offsets = (1 + xs) * dt / 2
-    jax.debug.print("t_quadrature_offsets {}", t_quadrature_offsets)
 
     def discretised_fn(qi_vec, t0):
         # Eq. 6

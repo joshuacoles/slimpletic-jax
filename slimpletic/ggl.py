@@ -34,7 +34,10 @@ def ggl(r: int) -> tuple[Array, Array, Array]:
         jnp.polyder(legendre)
     )
 
-    xs = jnp.sort(jnp.real(jnp.roots(poly)))
+    # The roots of the polynomial are the quadrature points. These are not returned in order, so we sort them.
+    # We also clip them to the range [-1, 1] to avoid numerical issues as we know statically that the roots are in this
+    # range.
+    xs = jnp.clip(jnp.sort(jnp.real(jnp.roots(poly))), -1, 1)
 
     legendre_at_xs = jnp.polyval(legendre, xs)
     ws = 2 / ((r + 1) * (r + 2) * legendre_at_xs ** 2)
@@ -94,3 +97,22 @@ def test_agreement_with_original_code():
         assert jnp.allclose(floatify1(original_xs), new_xs)
         assert jnp.allclose(floatify1(original_ws), new_ws)
         assert jnp.allclose(floatify2(original_dij), new_dij)
+
+
+def binary(num):
+    import struct
+    return ''.join('{:0>8b}'.format(c) for c in struct.pack('!d', num))
+
+
+def test_range_of_xs():
+    """
+    This is a test to ensure that the quadrature points are in the range [-1, 1].
+    """
+    from .helpers import jax_enable_x64
+    jax_enable_x64()
+
+    for r in range(0, 20):
+        new_xs, _, _ = ggl(r)
+
+        assert jnp.all(new_xs >= -1.0)
+        assert jnp.all(new_xs <= 1.0)
