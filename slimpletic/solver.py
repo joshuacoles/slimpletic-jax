@@ -31,7 +31,8 @@ def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float]
         # Eq 13(c), we set the derivative wrt to each interior point to zero
         eq13c_residues = dfdx[1:-1]
 
-        eq13a_residue = pi0 - dfdx[0]
+        # Eq 13(a), we set the derivative wrt to the final point to negative of pi0
+        eq13a_residue = pi0 + dfdx[0]
 
         return jnp.append(
             eq13c_residues,
