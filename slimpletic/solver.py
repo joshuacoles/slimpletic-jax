@@ -102,4 +102,4 @@ def iterate(
         init=(q0, pi0),
     )
 
-    return results
+    return jnp.insert(results[0], 0, q0), jnp.insert(results[1], 0, pi0)
