@@ -77,13 +77,10 @@ def iterate(
     ):
         (previous_q, previous_pi) = previous_state
 
-        jax.debug.print("previous_q {}\nprevious_pi {}", previous_q, previous_pi)
-        jax.debug.print("t_value {}", t_value)
-
         optimiser_result = optimiser.run(
             fill_out_initial(previous_q, r=r),
-            t0,
-            pi0
+            t_value,
+            previous_pi
         )
 
         qi_values = optimiser_result.params
@@ -93,6 +90,7 @@ def iterate(
         # q_{n, r + 1} = q_{n + 1, 0}
         q_next = qi_values[-1]
         pi_next = compute_pi_next(qi_values, t_value)
+        jax.debug.print("pi_current {} pi_next {}", pi0, pi_next)
         next_state = (q_next, pi_next)
 
         return next_state, next_state
