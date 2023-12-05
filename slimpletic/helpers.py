@@ -15,3 +15,23 @@ def floatify2(dij):
 def jax_enable_x64():
     from jax import config
     config.update("jax_enable_x64", True)
+
+
+def fill_out_initial(initial, r):
+    return jnp.repeat(initial[jnp.newaxis, :], r + 2, axis=0)
+
+
+def test_fill_out_initial():
+    assert jnp.array_equal(
+        fill_out_initial(
+            initial=jnp.array([1, 2, 3]),
+            r=3
+        ),
+        jnp.array([
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+        ])
+    )

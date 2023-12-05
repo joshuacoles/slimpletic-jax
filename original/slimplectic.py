@@ -1,4 +1,5 @@
-import slimplectic_GGL as ggl, numpy as np
+import numpy as np
+from .slimplectic_GGL import Gen_GGL_NC_VI_Map, Symbol, q_Generate_pm
 
 
 ###########################################
@@ -31,13 +32,13 @@ class GalerkinGaussLobatto(object):
       assert type(v_list[ii]) is str, "String input required."
 
     # Make sympy variables
-    self.t = ggl.Symbol(t, real=True)
-    self.q = [ggl.Symbol(qq, real=True) for qq in q_list]
-    self.v = [ggl.Symbol(vv, real=True) for vv in v_list]
+    self.t = Symbol(t, real=True)
+    self.q = [Symbol(qq, real=True) for qq in q_list]
+    self.v = [Symbol(vv, real=True) for vv in v_list]
 
     # Double the sympy variables
-    self.qp, self.qm = ggl.q_Generate_pm(self.q)
-    self.vp, self.vm = ggl.q_Generate_pm(self.v)
+    self.qp, self.qm = q_Generate_pm(self.q)
+    self.vp, self.vm = q_Generate_pm(self.v)
     
     #keep track of which variables are periodic and need to be modded
     if mod_list:
@@ -63,10 +64,10 @@ class GalerkinGaussLobatto(object):
           verbose: Boolean. True to output mapping expressions (default False)
     output: none
     """
-    self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map = ggl.Gen_GGL_NC_VI_Map(self.t, \
-                              self.q, self.qp, self.qm, \
-                              self.v, self.vp, self.vm, \
-                              L, K, order, method=method, verbose=verbose)
+    self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map = Gen_GGL_NC_VI_Map(self.t, \
+                                                                                               self.q, self.qp, self.qm, \
+                                                                                               self.v, self.vp, self.vm, \
+                                                                                               L, K, order, method=method, verbose=verbose)
 
   def integrate(self, q0_list, pi0_list, t, dt=False, output_v=False, output_File=False, t_out = [False], print_steps = 1):
     """Numerical integration from given initial data

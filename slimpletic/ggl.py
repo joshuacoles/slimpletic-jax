@@ -83,7 +83,7 @@ def dereduce(values, dt):
 
 
 def test_ggl():
-    from ggl.helpers import jax_enable_x64, floatify1, floatify2
+    from .helpers import jax_enable_x64, floatify1, floatify2
 
     jax_enable_x64()
     for r in range(0, 20):

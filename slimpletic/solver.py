@@ -6,10 +6,12 @@ import jaxopt
 from jax import Array
 
 from .discretise_integral import discretise_integral
+from .helpers import fill_out_initial
 
 __all__ = [
     'iterate'
 ]
+
 
 def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float], Array]:
     """
@@ -37,26 +39,6 @@ def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float]
         )
 
     return residue
-
-
-def fill_out_initial(initial, r):
-    return jnp.repeat(initial[jnp.newaxis, :], r + 2, axis=0)
-
-
-def test_fill_out_initial():
-    assert jnp.array_equal(
-        fill_out_initial(
-            initial=jnp.array([1, 2, 3]),
-            r=3
-        ),
-        jnp.array([
-            [1, 2, 3],
-            [1, 2, 3],
-            [1, 2, 3],
-            [1, 2, 3],
-            [1, 2, 3],
-        ])
-    )
 
 
 def iterate(
