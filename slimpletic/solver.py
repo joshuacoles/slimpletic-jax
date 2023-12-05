@@ -110,6 +110,9 @@ def iterate(
         debug_info = {
             't_samples': t_samples,
             't_quadrature_offsets': t_quadrature_offsets,
+            'lagrangian_d': lagrangian_d,
+            'residue': residue,
+            'compute_pi_next': compute_pi_next,
         }
 
         return q_with_initial, pi_with_initial, debug_info
