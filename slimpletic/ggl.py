@@ -82,7 +82,7 @@ def dereduce(values, dt):
     return xs, (dt / 2) * ws, (2 / dt) * derivative_matrix
 
 
-def test_ggl():
+def test_agreement_with_original_code():
     from .helpers import jax_enable_x64, floatify1, floatify2
 
     jax_enable_x64()

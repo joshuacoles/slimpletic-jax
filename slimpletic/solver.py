@@ -49,14 +49,15 @@ def iterate(
         t_sample_count: int,
         r: int,
         lagrangian: Callable[[Array, Array, float], float],
+        debug: bool = False
 ):
-    lagrangian_d = discretise_integral(
+    lagrangian_d, t_quadrature_offsets = discretise_integral(
         fn=lagrangian,
         r=r,
         dt=dt
     )
 
-    # Eq 4
+    # These are the values of t which we will sample the solution at.
     t_samples = t0 + jnp.arange(t_sample_count) * dt
 
     # TODO: TEST THIS
@@ -96,10 +97,22 @@ def iterate(
 
         return next_state, next_state
 
-    _, results = jax.lax.scan(
+    _, (q, pi) = jax.lax.scan(
         f=compute_next,
         xs=t_samples,
         init=(q0, pi0),
     )
 
-    return jnp.insert(results[0], 0, q0), jnp.insert(results[1], 0, pi0)
+    # We need to add the initial values back into the results.
+    q_with_initial = jnp.insert(q, 0, q0)
+    pi_with_initial = jnp.insert(pi, 0, pi0)
+
+    if debug:
+        debug_info = {
+            't_samples': t_samples,
+            't_quadrature_offsets': t_quadrature_offsets,
+        }
+
+        return q_with_initial, pi_with_initial, debug_info
+    else:
+        return q_with_initial, pi_with_initial
