@@ -107,8 +107,9 @@ def iterate(
         # q_{n, r + 1} = q_{n + 1, 0}
         q_next = qi_values[-1]
         pi_next = compute_pi_next(qi_values, t_value)
+        next_state = (q_next, pi_next)
 
-        return (q_next, pi_next), (q_next, pi_next)
+        return next_state, next_state
 
     _, results = jax.lax.scan(
         f=compute_next,

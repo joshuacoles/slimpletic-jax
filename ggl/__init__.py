@@ -71,6 +71,13 @@ def ggl(r: int) -> tuple[Array, Array, Array]:
 
 
 def dereduce(values, dt):
+    """
+    The values which are returned from ggl are reduced by certain factors to match the original code. Here we reverse
+    this reduction.
+    :param values: The tuple of values returned from ggl.
+    :param dt: The timestep of the integrator.
+    :return: The tuple of values, but with the reduction reversed.
+    """
     xs, ws, derivative_matrix = values
     return xs, (dt / 2) * ws, (2 / dt) * derivative_matrix
 
