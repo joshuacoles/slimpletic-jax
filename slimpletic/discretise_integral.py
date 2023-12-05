@@ -27,6 +27,26 @@ def test_range_of_quadrature_points():
         assert jnp.all(t_quadrature_offsets <= dt)
 
 
+# A tad redundant, but given things are being weird, I want to be sure.
+def test_coincidence_of_quadrature_points():
+    from original.slimplectic_GGL import Symbol, lambdify
+    from random import random
+
+    t_symbol = Symbol('t')
+    ddt_symbol = Symbol('dt')
+
+    for r in range(0, 20):
+        for _ in range(20):
+            dt_val = random()
+            xs, _, _ = ggl(r)  # No need to care about reduction here, xs is unreduced.
+            t_list = [t_symbol + 0.5 * (1 + xi) * ddt_symbol for xi in xs]
+
+            qua_values = lambdify([t_symbol, ddt_symbol], t_list)(0, dt_val)
+            qua_neu_values = (1 + xs) * dt_val / 2
+
+            assert jnp.allclose(jnp.array(qua_values), qua_neu_values)
+
+
 def discretise_integral(
         r: int,
         dt: float,
