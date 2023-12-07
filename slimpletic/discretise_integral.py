@@ -47,6 +47,16 @@ def test_coincidence_of_quadrature_points():
             assert jnp.allclose(jnp.array(qua_values), qua_neu_values)
 
 
+def test_coincidence_of_discretised_fn():
+    from original.slimplectic_GGL import GGL_Gen_Ld
+    from sympy import Symbol
+
+    GGL_Gen_Ld(
+        tsymbol=Symbol('t'),
+        ddt=Symbol('dt'),
+    )
+
+
 def discretise_integral(
         r: int,
         dt: float,

@@ -107,12 +107,15 @@ def iterate(
     pi_with_initial = jnp.insert(pi, 0, pi0)
 
     if debug:
+        from slimpletic.ggl import dereduce, ggl
+
         debug_info = {
             't_samples': t_samples,
             't_quadrature_offsets': t_quadrature_offsets,
             'lagrangian_d': lagrangian_d,
             'residue': residue,
             'compute_pi_next': compute_pi_next,
+            'ggl_data': dereduce(ggl(r), dt)
         }
 
         return q_with_initial, pi_with_initial, debug_info
