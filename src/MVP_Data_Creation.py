@@ -1,11 +1,11 @@
-import slimplectic
 import random
 import numpy as np
 from sympy import Pow
 
+from .slimplectic import GalerkinGaussLobatto
+
 DataSetSize = 10
 PSeriesOrder = 2
-
 
 def random_coeffs():
     an, bn = [], []
@@ -17,7 +17,7 @@ def random_coeffs():
 
 def slimplecticSoln():
     # create object to get data from
-    object = slimplectic.GalerkinGaussLobatto('t', ['q'], ['v'])
+    object = GalerkinGaussLobatto('t', ['q'], ['v'])
 
     # define Lagrangian
     an, bn = random_coeffs()
