@@ -466,7 +466,8 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                       eval_modules="numpy",
                       method='implicit',
                       verbose=True,
-                      verbose_rational=True
+                      verbose_rational=True,
+                      debug_escape_info=None
                       ):
     """Gen_GGL_NC_VI_Map generates the mapping functions for the
     Galerkin-Gauss-Lobatto Nonconservative Variational Integrator
@@ -684,6 +685,9 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                            for EOM_Func in EOM_Func_List])
         # print out
         return out
+
+    if debug_escape_info is not None:
+        debug_escape_info['EOM_Val_Vec'] = EOM_Val_Vec
 
     # EOM_J_Matrix is the function to be passed
     # to scipy.optimize.root() that returns the

@@ -13,7 +13,10 @@ __all__ = [
 ]
 
 
-def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float], Array]:
+def make_residue(
+        fn: Callable[[Array, float], float] = None,
+        derivatives: Callable[[Array, float], Array] = None
+) -> Callable[[Array, float, Array], Array]:
     """
     Computes the residue of the equation of motion system for the provided discrete lagrangian.
 
@@ -21,17 +24,18 @@ def make_residue(fn: Callable[[Array, float], float]) -> Callable[[Array, float]
     seek to make equal to zero.
 
     :param fn: The discrete lagrangian, in the form (q_vec, t) -> float.
+    :param derivatives: The derivatives of the discrete lagrangian, in the form (q_vec, t) -> [float; r + 1].
     :return: The residue function, having signature (q_vec, t) -> [float; r + 1].
     """
-    derivatives = jax.grad(fn, argnums=0)
+    derivatives_inner = derivatives or jax.grad(fn, argnums=0)
 
     def residue(q_vec, t, pi0):
-        dfdx = derivatives(q_vec, t)
+        dfdx = derivatives_inner(q_vec, t)
 
         # Eq 13(c), we set the derivative wrt to each interior point to zero
         eq13c_residues = dfdx[1:-1]
 
-        # Eq 13(a), we set the derivative wrt to the final point to negative of pi0
+        # Eq 13(a), we set the derivative wrt to the initial point to negative of pi0
         eq13a_residue = pi0 + dfdx[0]
 
         return jnp.append(
@@ -58,18 +62,19 @@ def iterate(
         dt=dt
     )
 
+    derivatives = jax.grad(lagrangian_d, argnums=0)
+
     # These are the values of t which we will sample the solution at.
     t_samples = t0 + jnp.arange(t_sample_count) * dt
 
     # TODO: TEST THIS
     def compute_pi_next(qi_values, t_value):
         # Eq 13(b)
-        derivatives = jax.grad(lagrangian_d, argnums=0)
         v = derivatives(qi_values, t_value)[-1]
         return v
 
     # Set up the residual function and optimiser once as they can be reused.
-    residue = make_residue(lagrangian_d)
+    residue = make_residue(derivatives=derivatives)
     optimiser = jaxopt.GaussNewton(residual_fun=residue)
 
     def compute_next(

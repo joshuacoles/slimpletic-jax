@@ -15,8 +15,8 @@ class GalerkinGaussLobatto(object):
           q_list : list of strings for generating symbols for dof q
           v_list : list of strings for generating symbols for \dot{q}
           mod_list : list of values to mod the q values by for periodic variables
-                     if not periodic, the value is set to False (default). 
-                     
+                     if not periodic, the value is set to False (default).
+
     methods: discretize : creates the variational integrator maps
              integrate: applies the maps created by discretize
     """
@@ -39,7 +39,7 @@ class GalerkinGaussLobatto(object):
     # Double the sympy variables
     self.qp, self.qm = q_Generate_pm(self.q)
     self.vp, self.vm = q_Generate_pm(self.v)
-    
+
     #keep track of which variables are periodic and need to be modded
     if mod_list:
         self.modlist = mod_list
@@ -47,7 +47,7 @@ class GalerkinGaussLobatto(object):
         self.modlist = []
         for q in q_list:
             self.modlist.append(False)
-    
+
 
   def keys(self):
     return self.__dict__.keys()
@@ -55,34 +55,37 @@ class GalerkinGaussLobatto(object):
   def discretize(self, L, K, order, method='explicit', verbose=False):
     """Generate the nonconservative variational integrator maps
     by setting the methods _qi_soln_map, _q_np1_map, _pi_np1_map, _qdot_n_map
-    args: L : sympy expression for the conservative Lagrangian. Should be in 
+    args: L : sympy expression for the conservative Lagrangian. Should be in
               terms of the self.q and self.v variables
-          K : sympy expression for the nonconservative potential. Should be in 
+          K : sympy expression for the nonconservative potential. Should be in
               terms of the self.qp/m and self.vp/m variables
           order: integer order (r) of the GGL method (r+2 is the total order of the method)
           method: string 'implicit' or 'explicit' evaluation (default explicit)
           verbose: Boolean. True to output mapping expressions (default False)
     output: none
     """
+    self.order = order
+    self.debug_escape_info = {}
     self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map = Gen_GGL_NC_VI_Map(self.t, \
                                                                                                self.q, self.qp, self.qm, \
                                                                                                self.v, self.vp, self.vm, \
-                                                                                               L, K, order, method=method, verbose=verbose)
+                                                                                               L, K, order, method=method, verbose=verbose,
+                                                                                               debug_escape_info=self.debug_escape_info)
 
   def integrate(self, q0_list, pi0_list, t, dt=False, output_v=False, output_File=False, t_out = [False], print_steps = 1):
     """Numerical integration from given initial data
     args: q0_list: list of initial q values (floats)
           pi0_list: list of initial pi (nonconservative momentum) values (floats)
-          t: list of t values (floats) over which to integrate the system. 
+          t: list of t values (floats) over which to integrate the system.
           dt: defaults to the difference between the first two elements of the t array. Otherwise
               the stepsize must be specified as a float.
-          output_v: Boolean value, if True, output will be 
+          output_v: Boolean value, if True, output will be
                     q_list_soln.T, pi_list_soln.T, qdot_list_soln.T
                     defaults to False
           outputFile: filename for the output file. Defaults to False and no file is produced.
-                      output is in csv format, with first line the column labels. 
+                      output is in csv format, with first line the column labels.
           t_out: sets the output t_array for the output_File. Defaults to same as t
-          print_steps: outputs to file every print_steps steps. Defaults to 1. 
+          print_steps: outputs to file every print_steps steps. Defaults to 1.
     output: q_list_soln.T, pi_list_soln.T the integrated q and pi arrays at each time.
             unless output_v is True
     """
@@ -100,16 +103,17 @@ class GalerkinGaussLobatto(object):
     q_list_soln = np.zeros((t_len+1, self._num_dof))
     pi_list_soln = np.zeros((t_len+1, self._num_dof))
     qdot_list_soln = np.zeros((t_len+1, self._num_dof))
+    qi_sol_list = np.zeros((t_len+1, self._num_dof * (self.order + 2)))
 
     #Open output file if necessary
     if output_File:
       outfile = open(output_File, "w")
-    
+
     # Set initial data
     q_list_soln[0,:] = q0_list
     # mod the value of any periodic variables that have mod value specified
-    # This prevents NC evolution error due to increasing roundoff error as 
-    # any cyclic periodic variables become large. 
+    # This prevents NC evolution error due to increasing roundoff error as
+    # any cyclic periodic variables become large.
     for jj,mod in enumerate(self.modlist):
         if mod:
             q_list_soln[0,jj] = q_list_soln[0,jj]%mod
@@ -136,10 +140,11 @@ class GalerkinGaussLobatto(object):
     for ii in range(1, t_len+1):
         args = [q_list_soln[ii-1], pi_list_soln[ii-1], t[ii-1], ddt]
         qi_sol = self._qi_soln_map(*args)
+        qi_sol_list[ii] = qi_sol
         q_list_soln[ii] = self._q_np1_map(qi_sol, *args)
         # mod the value of any periodic variables that have mod value specified
-        # This prevents NC evolution error due to increasing roundoff error as 
-        # any cyclic periodic variables become large. 
+        # This prevents NC evolution error due to increasing roundoff error as
+        # any cyclic periodic variables become large.
         for jj,mod in enumerate(self.modlist):
             if mod:
                 q_list_soln[ii,jj] = q_list_soln[ii,jj]%mod
@@ -163,6 +168,9 @@ class GalerkinGaussLobatto(object):
                 outstring += ', {:.15e}'.format(qdot_val)
             outfile.write(outstring + '\n')
             outfile.flush()
+
+    self.qi_sol_list = qi_sol_list
+
     # Return the numerical solutions
     if output_v:
         return q_list_soln[:-1].T, pi_list_soln[:-1].T, qdot_list_soln[:-1].T
