@@ -86,6 +86,11 @@ def dereduce(values, dt):
 
 
 def test_agreement_with_original_code():
+    """
+    Test that the GGL quadrature points, weights, and derivative matrix agree with the original code up to a certain
+    tolerance.
+    :return:
+    """
     from .helpers import jax_enable_x64, floatify1, floatify2
 
     jax_enable_x64()
