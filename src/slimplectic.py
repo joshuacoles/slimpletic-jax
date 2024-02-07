@@ -1,5 +1,9 @@
-import slimplectic_GGL as ggl
 import numpy as np
+from sympy import *
+import numpy
+import scipy.optimize
+
+from .slimplectic_GGL import Symbol, q_Generate_pm, Gen_GGL_NC_VI_Map
 
 
 ###########################################
@@ -32,13 +36,13 @@ class GalerkinGaussLobatto(object):
             assert type(v_list[ii]) is str, "String input required."
 
         # Make sympy variables
-        self.t = ggl.Symbol(t, real=True)
-        self.q = [ggl.Symbol(qq, real=True) for qq in q_list]
-        self.v = [ggl.Symbol(vv, real=True) for vv in v_list]
+        self.t = Symbol(t, real=True)
+        self.q = [Symbol(qq, real=True) for qq in q_list]
+        self.v = [Symbol(vv, real=True) for vv in v_list]
 
         # Double the sympy variables
-        self.qp, self.qm = ggl.q_Generate_pm(self.q)
-        self.vp, self.vm = ggl.q_Generate_pm(self.v)
+        self.qp, self.qm = q_Generate_pm(self.q)
+        self.vp, self.vm = q_Generate_pm(self.v)
 
         # keep track of which variables are periodic and need to be modded
         if mod_list:
@@ -63,7 +67,7 @@ class GalerkinGaussLobatto(object):
               verbose: Boolean. True to output mapping expressions (default False)
         output: none
         """
-        self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map = ggl.Gen_GGL_NC_VI_Map(self.t, \
+        self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map = Gen_GGL_NC_VI_Map(self.t, \
                                                                                                        self.q, self.qp,
                                                                                                        self.qm, \
                                                                                                        self.v, self.vp,

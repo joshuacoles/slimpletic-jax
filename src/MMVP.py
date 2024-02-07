@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 import tensorflow as tf
-from MVP_Data_Creation import slimplecticSoln
+from .MVP_Data_Creation import slimplecticSoln
 
 EPOCHS = 100
 DATASIZE = 256
