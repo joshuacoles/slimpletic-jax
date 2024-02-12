@@ -47,16 +47,6 @@ def test_coincidence_of_quadrature_points():
             assert jnp.allclose(jnp.array(qua_values), qua_neu_values)
 
 
-def test_coincidence_of_discretised_fn():
-    from original.slimplectic_GGL import GGL_Gen_Ld
-    from sympy import Symbol
-
-    GGL_Gen_Ld(
-        tsymbol=Symbol('t'),
-        ddt=Symbol('dt'),
-    )
-
-
 def discretise_integral(
         r: int,
         dt: float,
@@ -78,23 +68,19 @@ def discretise_integral(
     """
     xs, ws, dij = dereduce(ggl(r), dt)
 
-    # Eq. 4
+    # Eq. 4 (part 1)
     # These are the offsets **within** [t0, t0 + dt] which we evaluate the function at to compute the integral.
     t_quadrature_offsets = (1 + xs) * dt / 2
 
     def discretised_fn(qi_vec, t0):
-        # Eq. 6
+        # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
         qidot_vec = jax.numpy.matmul(dij, qi_vec)
 
+        # Eq. 4 (part 2)
         t_quadrature_values = t0 + t_quadrature_offsets
 
-        # Eq. 7
-        return jnp.dot(ws, jax.vmap(
-            fn
-        )(
-            qi_vec,
-            qidot_vec,
-            t_quadrature_values,
-        ))
+        # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
+        fn_i = jax.vmap(fn)(qi_vec, qidot_vec, t_quadrature_values)
+        return jnp.dot(ws, fn_i)
 
     return discretised_fn, t_quadrature_offsets

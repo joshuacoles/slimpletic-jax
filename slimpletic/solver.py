@@ -30,13 +30,13 @@ def make_residue(
     derivatives_inner = derivatives or jax.grad(fn, argnums=0)
 
     def residue(q_vec, t, pi0):
-        dfdx = derivatives_inner(q_vec, t)
-
-        # Eq 13(c), we set the derivative wrt to each interior point to zero
-        eq13c_residues = dfdx[1:-1]
+        dld_dqi_values = derivatives_inner(q_vec, t)
 
         # Eq 13(a), we set the derivative wrt to the initial point to negative of pi0
-        eq13a_residue = pi0 + dfdx[0]
+        eq13a_residue = pi0 + dld_dqi_values[0]
+
+        # Eq 13(c), we set the derivative wrt to each interior point to zero
+        eq13c_residues = dld_dqi_values[1:-1]
 
         return jnp.append(
             eq13c_residues,
@@ -70,26 +70,30 @@ def iterate(
     # TODO: TEST THIS
     def compute_pi_next(qi_values, t_value):
         # Eq 13(b)
-        v = derivatives(qi_values, t_value)[-1]
-        return v
+        derivative_values = derivatives(qi_values, t_value)
+        jax.debug.print("derivative_values {}", derivative_values)
+        return derivative_values[-1]
 
     # Set up the residual function and optimiser once as they can be reused.
     residue = make_residue(derivatives=derivatives)
     optimiser = jaxopt.GaussNewton(residual_fun=residue)
 
-    def compute_next(
-            previous_state,
-            t_value
-    ):
-        (previous_q, previous_pi) = previous_state
-
+    def compute_qi_values(previous_q, previous_pi, t_value):
         optimiser_result = optimiser.run(
             fill_out_initial(previous_q, r=r),
             t_value,
             previous_pi
         )
 
-        qi_values = optimiser_result.params
+        return optimiser_result.params
+
+
+    def compute_next(
+            previous_state,
+            t_value
+    ):
+        (previous_q, previous_pi) = previous_state
+        qi_values = compute_qi_values(previous_q, previous_pi, t_value)
 
         jax.debug.print("qi_values {}", qi_values)
 
@@ -115,12 +119,14 @@ def iterate(
         from slimpletic.ggl import dereduce, ggl
 
         debug_info = {
+            'derivatives': derivatives,
             't_samples': t_samples,
             't_quadrature_offsets': t_quadrature_offsets,
             'lagrangian_d': lagrangian_d,
             'residue': residue,
             'compute_pi_next': compute_pi_next,
-            'ggl_data': dereduce(ggl(r), dt)
+            'ggl_data': dereduce(ggl(r), dt),
+            'compute_qi_values': compute_qi_values,
         }
 
         return q_with_initial, pi_with_initial, debug_info
