@@ -12,9 +12,9 @@ ll = 1e-4 * np.sqrt(m * k)  # ll is $\lambda$ in the paper
 
 # Simulation and Method parameters
 dt = 0.1 * np.sqrt(m / k)
-t_sample_count = 1
+t_sample_count = 10
 tmax = t_sample_count * np.sqrt(m / k)
-t0 = 0
+t0 = 1
 t = t0 + dt * np.arange(0, t_sample_count + 1)
 r = 0
 
@@ -29,4 +29,5 @@ def lagrangian_f(q, qdot, t):
 
 solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f)
 
-solver.integrate_manual(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
+a = solver.integrate_manual(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
+print(a)

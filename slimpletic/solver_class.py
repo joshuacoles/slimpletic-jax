@@ -1,6 +1,4 @@
-import dataclasses
 from dataclasses import dataclass
-import functools
 
 import jax
 
@@ -8,7 +6,7 @@ import jax.numpy as jnp
 import jaxopt
 from attr.exceptions import FrozenError
 
-from slimpletic.discretise_integral import discretise_integral
+from slimpletic.ggl import ggl, dereduce
 from slimpletic.helpers import fill_out_initial
 
 
@@ -22,8 +20,11 @@ class Solver:
     dt: float
     optimiser: jaxopt.GaussNewton
     lagrangian: callable
-    lagrangian_d: callable
     derivatives: callable
+
+    xs: jnp.ndarray
+    ws: jnp.ndarray
+    dij: jnp.ndarray
 
     # This is a bit of a hack to ensure that the object is immutable after creation.
     _sealed: bool = False
@@ -36,12 +37,26 @@ class Solver:
 
     def __init__(self, r: int, dt: float, lagrangian: callable):
         self.r = r
+        self.xs, self.ws, self.dij = dereduce(ggl(r), dt)
         self.dt = dt
+
         self.lagrangian = lagrangian
-        self.lagrangian_d = discretise_integral(fn=lagrangian, r=r, dt=1)[0]
         self.derivatives = jax.grad(self.lagrangian_d, argnums=0)
         self.optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
         self._sealed = True
+
+    def lagrangian_d(self, qi_vec, t0):
+        t_quadrature_offsets = (1 + self.xs) * self.dt / 2
+
+        # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
+        qidot_vec = jax.numpy.matmul(self.dij, qi_vec)
+
+        # Eq. 4 (part 2)
+        t_quadrature_values = t0 + t_quadrature_offsets
+
+        # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
+        fn_i = jax.vmap(self.lagrangian)(qi_vec, qidot_vec, t_quadrature_values)
+        return jnp.dot(self.ws, fn_i)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
         optimiser_result = self.optimiser.run(
@@ -82,17 +97,17 @@ class Solver:
         (previous_q, previous_pi) = previous_state
         qi_values = self.compute_qi_values(previous_q, previous_pi, t_value)
 
-        jax.debug.print("qi_values {}", qi_values)
-
         # q_{n, r + 1} = q_{n + 1, 0}
         q_next = qi_values[-1]
         pi_next = self.compute_pi_next(qi_values, t_value)
-        jax.debug.print("pi_current {} pi_next {}", previous_pi, pi_next)
         next_state = (q_next, pi_next)
 
         return next_state, next_state
 
-    def integrate(self, q0, pi0, t0, t_sample_count):
+    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, t_sample_count: int):
+        if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
+            raise ValueError("q0 and pi0 must be jax numpy arrays.")
+
         # These are the values of t which we will sample the solution at.
         t_samples = t0 + jnp.arange(t_sample_count) * self.dt
 
@@ -111,8 +126,11 @@ class Solver:
     def integrate_manual(self, q0, pi0, t0, t_sample_count):
         """
         This is a manual implementation of the integrate function, which is useful for debugging and understanding the
-        code.
+        code. It is not recommended for production use as it is *much* slower than the standard integrate function.
         """
+        if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
+            raise ValueError("q0 and pi0 must be jax numpy arrays.")
+
         # These are the values of t which we will sample the solution at.
         t_samples = t0 + jnp.arange(t_sample_count) * self.dt
 
@@ -126,4 +144,4 @@ class Solver:
             q.append(q_next)
             pi.append(pi_next)
 
-        return jnp.array(q), jnp.array(pi)
+        return jnp.stack(q), jnp.stack(pi)
