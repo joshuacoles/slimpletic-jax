@@ -44,4 +44,14 @@ for _ in range(100):
     )
 print("Success")
 
+print("Testing pi_next")
+# The next thing is to test the discretised lagrangians are the same
+for _ in range(100):
+    qi_values = jnp.array(np.random.normal(size=(r + 2, dof)))
+    t = np.random.rand()
 
+    assert jnp.isclose(
+        original.compute_pi_next(qi_values, t, dt),
+        solver.compute_pi_next(qi_values, t)
+    )
+print("Success")

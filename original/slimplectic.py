@@ -3,6 +3,8 @@ from sympy import Symbol
 import original.slimplectic_GGL as ggl
 import numpy as np
 
+from slimpletic.helpers import floatify1
+
 
 class GalerkinGaussLobatto:
     def __init__(
@@ -60,7 +62,7 @@ class GalerkinGaussLobatto:
               verbose: Boolean. True to output mapping expressions (default False)
         output: none
         """
-        self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map, self.symbol_map = ggl.Gen_GGL_NC_VI_Map(
+        self._qi_soln_map, self._q_np1_map, self.compute_pi_next_inner, self._qdot_n_map, self.symbol_map = ggl.Gen_GGL_NC_VI_Map(
             self.t,
             self.q,
             self.qp,
@@ -128,25 +130,36 @@ class GalerkinGaussLobatto:
             (self.t, t)
         ]))
 
-    def lagrangian_d(self, qi_vec, t0, dt):
-        Ld = self.symbol_map['Ld']
+    def qi_subs_table(self, qi_values):
         qi_table = self.symbol_map['q_Table']
-        subs = [(self.symbol_map['dt'], dt)]
+        subs = []
 
-        # TODO: Test this with higher r and dof values
-        # TODO: Test with t dependent Ld
-        for i in range(len(qi_vec)):
-            for dof in range(len(qi_vec[i])):
-                subs.append((qi_table[dof][i], qi_vec[i][dof]))
+        for i in range(len(qi_values)):
+            for dof in range(self.degrees_of_freedom):
+                subs.append((qi_table[dof][i], qi_values[i][dof]))
 
-        ld_subs = Ld.subs(subs)
-        return float(ld_subs)
+        return subs
+
+    def lagrangian_d(self, qi_vec, t0, dt):
+        ld_expr = self.symbol_map['Ld']
+        subs = [
+            (self.symbol_map['dt'], dt),
+            *self.qi_subs_table(qi_vec)
+        ]
+
+        return float(ld_expr.subs(subs))
 
     def compute_qi_values(self, previous_q, previous_pi, t_value, dt):
         return self._qi_soln_map(previous_q, previous_pi, t_value, dt)
 
-    def compute_pi_next(self, qi_values, previous_q, previous_pi, t_value, dt):
-        return self._pi_np1_map(qi_values, previous_q, previous_pi, t_value, dt)
+    def compute_pi_next(self, qi_values, t_value, dt):
+        # TODO: Explict time dependence
+        subs = [
+            (self.symbol_map['dt'], dt),
+            *self.qi_subs_table(qi_values)
+        ]
+
+        return floatify1([expr.subs(subs) for expr in self.symbol_map['pi_exprs']])
 
     def compute_next(
             self,
@@ -159,7 +172,7 @@ class GalerkinGaussLobatto:
         qi_values = self.compute_qi_values(previous_q, previous_pi, t_value, dt)
 
         q_next = self.mod_values(self._q_np1_map(qi_values, *args))
-        pi_next = self.compute_pi_next(qi_values, previous_q, previous_pi, t_value, dt)
+        pi_next = self.compute_pi_next_inner(qi_values, previous_q, previous_pi, t_value, dt)
         v_current = self._qdot_n_map(qi_values, *args)
 
         return q_next, pi_next, v_current

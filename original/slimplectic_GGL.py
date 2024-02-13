@@ -816,5 +816,6 @@ def Gen_GGL_NC_VI_Map(t_symbol,
         'dt': ddt_symbol,
         'L': Lexpr,
         'Ld': Ld,
-        'q_Table': q_Table
+        'q_Table': q_Table,
+        'pi_exprs': pi_n_expr,
     }

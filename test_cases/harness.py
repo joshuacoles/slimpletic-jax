@@ -42,12 +42,10 @@ def lagrangian_f(q, v, t):
 
 solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f)
 
-
-
-jax_results = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
-original_results = original.integrate(
-    q0=np.array(q0),
-    pi0=np.array(pi0),
-    t=t,
-    dt=dt,
-)
+# jax_results = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
+# original_results = original.integrate(
+#     q0=np.array(q0),
+#     pi0=np.array(pi0),
+#     t=t,
+#     dt=dt,
+# )
