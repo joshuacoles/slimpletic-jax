@@ -1,10 +1,19 @@
+from sympy import Symbol
+
 import original.slimplectic_GGL as ggl
 import numpy as np
 
 
 class GalerkinGaussLobatto:
-    def __init__(self, t, q_list, v_list, mod_list=False):
-        """GalerkinGaussLobatto class:
+    def __init__(
+            self,
+            t: str,
+            q_list: list[str],
+            v_list: list[str],
+            mod_list: list[bool] = False
+    ):
+        """
+        GalerkinGaussLobatto class:
         args: t : string for generating the sympy symbol the independent "time" variable
               q_list : list of strings for generating symbols for dof q
               v_list : list of strings for generating symbols for \dot{q}
@@ -17,13 +26,14 @@ class GalerkinGaussLobatto:
         # Validate inputs
         assert type(t) is str, "String input required."
         assert len(q_list) == len(v_list), "Unequal number of coordinates and velocities."
-        self._num_dof = len(q_list)
         assert type(q_list) is list, "List input required."
         assert type(v_list) is list, "List input required."
 
         for ii in range(len(q_list)):
             assert type(q_list[ii]) is str, "String input required."
             assert type(v_list[ii]) is str, "String input required."
+
+        self.degrees_of_freedom = len(q_list)
 
         # Make sympy variables
         self.t = ggl.Symbol(t, real=True)
@@ -33,14 +43,7 @@ class GalerkinGaussLobatto:
         # Double the sympy variables
         self.qp, self.qm = ggl.q_Generate_pm(self.q)
         self.vp, self.vm = ggl.q_Generate_pm(self.v)
-
-        # keep track of which variables are periodic and need to be modded
-        if mod_list:
-            self.modlist = mod_list
-        if not mod_list:
-            self.modlist = []
-            for q in q_list:
-                self.modlist.append(False)
+        self.modlist = mod_list or []
 
     def keys(self):
         return self.__dict__.keys()
@@ -72,8 +75,8 @@ class GalerkinGaussLobatto:
 
     def integrate(
             self,
-            q0_list,
-            pi0_list,
+            q0_list: np.ndarray,
+            pi0_list: np.ndarray,
             t,
             dt,
     ):
@@ -94,41 +97,47 @@ class GalerkinGaussLobatto:
         output: q_list_soln.T, pi_list_soln.T the integrated q and pi arrays at each time.
                 unless output_v is True
         """
-
-        # Check if total Lagrangian is discretized already
-        if not hasattr(self, '_qi_soln_map'):
-            raise AttributeError("Run `discretize` to discretize the total Lagrangian.")
-
-        # Validate input
-        assert type(q0_list) in [list, np.ndarray], "List or numpy array input required."
-        assert type(pi0_list) in [list, np.ndarray], "List or numpy array input required."
-
         # Allocate memory for solutions
         t_len = t.size
-        q_list_soln = np.zeros((t_len + 1, self._num_dof))
-        pi_list_soln = np.zeros((t_len + 1, self._num_dof))
-        qdot_list_soln = np.zeros((t_len + 1, self._num_dof))
+        q_list_soln = np.zeros((t_len + 1, self.degrees_of_freedom))
+        pi_list_soln = np.zeros((t_len + 1, self.degrees_of_freedom))
+        qdot_list_soln = np.zeros((t_len + 1, self.degrees_of_freedom))
 
         # Set initial data
         q_list_soln[0, :] = self.mod_values(q0_list)
         pi_list_soln[0, :] = pi0_list
 
-        # Perform the integration at fixed time steps
-        if dt:
-            ddt = dt
-        else:
-            ddt = t[1] - t[0]
-
         for ii in range(1, t_len + 1):
-            args = [q_list_soln[ii - 1], pi_list_soln[ii - 1], t[ii - 1], ddt]
-            qi_sol = self._qi_soln_map(*args)
-            q_list_soln[ii] = self.mod_values(self._q_np1_map(qi_sol, *args))
+            q_next, pi_next, v_current = self.compute_next(
+                previous_state=(q_list_soln[ii - 1], pi_list_soln[ii - 1]),
+                t_value=t[ii - 1],
+                dt=dt
+            )
 
-            pi_list_soln[ii] = self._pi_np1_map(qi_sol, *args)
-            qdot_list_soln[ii - 1] = self._qdot_n_map(qi_sol, *args)
+            q_list_soln[ii] = q_next
+            pi_list_soln[ii] = pi_next
+            qdot_list_soln[ii - 1] = v_current
 
         # Return the numerical solutions
         return q_list_soln[:-1].T, pi_list_soln[:-1].T, qdot_list_soln[:-1].T
+
+    def compute_qi_values(self, previous_q, previous_pi, t_value, dt):
+        return self._qi_soln_map(previous_q, previous_pi, t_value, dt)
+
+    def compute_next(
+            self,
+            previous_state,
+            t_value,
+            dt
+    ):
+        (previous_q, previous_pi) = previous_state
+        args = [previous_q, previous_pi, t_value, dt]
+        qi_sol = self.compute_qi_values(previous_q, previous_pi, t_value, dt)
+        q_next = self.mod_values(self._q_np1_map(qi_sol, *args))
+        pi_next = self._pi_np1_map(qi_sol, *args)
+        v_current = self._qdot_n_map(qi_sol, *args)
+
+        return q_next, pi_next, v_current
 
     def mod_values(self, values):
         # mod the value of any periodic variables that have mod value specified
