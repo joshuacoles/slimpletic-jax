@@ -14,7 +14,7 @@ ll = 1e-4 * np.sqrt(m * k)  # ll is $\lambda$ in the paper
 
 # Simulation and Method parameters
 dt = 0.1 * np.sqrt(m / k)
-t_sample_count = 100
+t_sample_count = 1000
 tmax = t_sample_count * np.sqrt(m / k)
 t0 = 1
 t = t0 + dt * np.arange(0, t_sample_count + 1)
