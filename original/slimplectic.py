@@ -75,8 +75,8 @@ class GalerkinGaussLobatto:
 
     def integrate(
             self,
-            q0_list: np.ndarray,
-            pi0_list: np.ndarray,
+            q0: np.ndarray,
+            pi0: np.ndarray,
             t,
             dt,
     ):
@@ -104,8 +104,8 @@ class GalerkinGaussLobatto:
         qdot_list_soln = np.zeros((t_len + 1, self.degrees_of_freedom))
 
         # Set initial data
-        q_list_soln[0, :] = self.mod_values(q0_list)
-        pi_list_soln[0, :] = pi0_list
+        q_list_soln[0, :] = self.mod_values(q0)
+        pi_list_soln[0, :] = pi0
 
         for ii in range(1, t_len + 1):
             q_next, pi_next, v_current = self.compute_next(
@@ -119,7 +119,7 @@ class GalerkinGaussLobatto:
             qdot_list_soln[ii - 1] = v_current
 
         # Return the numerical solutions
-        return q_list_soln[:-1].T, pi_list_soln[:-1].T, qdot_list_soln[:-1].T
+        return q_list_soln[:-1], pi_list_soln[:-1], qdot_list_soln[:-1]
 
     def compute_qi_values(self, previous_q, previous_pi, t_value, dt):
         return self._qi_soln_map(previous_q, previous_pi, t_value, dt)
