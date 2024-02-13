@@ -124,6 +124,9 @@ class GalerkinGaussLobatto:
     def compute_qi_values(self, previous_q, previous_pi, t_value, dt):
         return self._qi_soln_map(previous_q, previous_pi, t_value, dt)
 
+    def compute_pi_next(self, qi_values, previous_q, previous_pi, t_value, dt):
+        return self._pi_np1_map(qi_values, previous_q, previous_pi, t_value, dt)
+
     def compute_next(
             self,
             previous_state,
@@ -132,10 +135,11 @@ class GalerkinGaussLobatto:
     ):
         (previous_q, previous_pi) = previous_state
         args = [previous_q, previous_pi, t_value, dt]
-        qi_sol = self.compute_qi_values(previous_q, previous_pi, t_value, dt)
-        q_next = self.mod_values(self._q_np1_map(qi_sol, *args))
-        pi_next = self._pi_np1_map(qi_sol, *args)
-        v_current = self._qdot_n_map(qi_sol, *args)
+        qi_values = self.compute_qi_values(previous_q, previous_pi, t_value, dt)
+
+        q_next = self.mod_values(self._q_np1_map(qi_values, *args))
+        pi_next = self.compute_pi_next(qi_values, previous_q, previous_pi, t_value, dt)
+        v_current = self._qdot_n_map(qi_values, *args)
 
         return q_next, pi_next, v_current
 
