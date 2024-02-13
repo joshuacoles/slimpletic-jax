@@ -624,8 +624,6 @@ def Gen_GGL_NC_VI_Map(t_symbol,
     full_variable_list.append(t_symbol)
     full_variable_list.append(ddt_symbol)
 
-    # print full_variable_list
-
     def Convert_EOM_Args(qi_vec, qn_vec, pi_nvec, tval, ddt):
         # Convert_EOM_Args returns an argument list for
         # for the lambdified EOM functions.
@@ -706,68 +704,8 @@ def Gen_GGL_NC_VI_Map(t_symbol,
 
         return numpy.array(J_Matrix)
 
-    if method == 'explicit':
-        # print 'EXPLICIT METHOD'
-        qi_func_args = []
-        for dof in range(len(q_Table)):
-            qi_func_args.append(q_Table[dof][0])
-        for dof in range(len(pi_n_list)):
-            qi_func_args.append(pi_n_list[dof])
-        qi_func_args.append(t_symbol)
-        qi_func_args.append(ddt_symbol)
-
-        qi_sol_dict = solve(EOM_List, qi_symbol_list, dict=True)
-        #        print qi_symbol_list[0]
-        #        print qi_sol_dict
-        #        print qi_sol_dict[0]
-        if not qi_sol_dict:
-            print("ERROR: explicit solve failed, try implicit solution")
-            return
-        qi_sol_list = [qi_sol_dict[0][qi_symbol]
-                       for qi_symbol in qi_symbol_list]
-        #        print qi_sol_list
-        qi_func_list = [lambdify(qi_func_args,
-                                 qi_sol,
-                                 modules=eval_modules)
-                        for qi_sol in qi_sol_list]
-
-        # print qi_sol_list
-        # print qi_sol_list
-
     # These are the output functions:
     #############################
-
-    if method == 'explicit':
-        def qi_sol_func_explicit(q_n_vec, pi_n_vec, tval, ddt, root_args={}):
-            """This function evaluates the explicit equations
-            for the intemediate points [{q_1^(i)_0}, q_1^[n+1]_0, ...]
-            to generate the iterated intermediate results
-            for the explicit GGL-NC-VI method.
-
-            Output:
-            qi_sol - the ndarray that contains the value of qi
-            Input:
-            q_n_vec[dof] - ndarray of current q_n values
-            pi_n_vec[dof] - ndarray of current pi_n values
-            tval - float for the current value of time
-            ddt - float for the size of the time step
-            """
-            # Populate qi_0 array for nsolve()
-
-            qi_arg_vals = []
-            for dof in range(len(q_n_vec)):
-                qi_arg_vals.append(q_n_vec[dof])
-            for dof in range(len(pi_n_vec)):
-                qi_arg_vals.append(pi_n_vec[dof])
-            qi_arg_vals.append(tval)
-            qi_arg_vals.append(ddt)
-
-            qi_sol = [qi_func(*tuple(qi_arg_vals))
-                      for qi_func in qi_func_list]
-            # print qi_arg_vals
-            # print qi_sol
-
-            return numpy.array(qi_sol)
 
     def qi_sol_func_implicit(q_n_vec, pi_n_vec, tval, ddt,
                              root_args={'tol': 1e-10}):
@@ -912,59 +850,4 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                     for qi_vec in qi_table]
         return numpy.array(qdot_vec, dtype=float)
 
-    # Verbose output:
-
-    if verbose:
-        print('===================================')
-        print('For Lagrangian:')
-        print('\t L = ' + latex(Lexpr))
-        print('and K-potential:')
-        print('\t K = ' + latex(Kexpr))
-        print('********************')
-        print('The Order ' + repr(2 * r + 2) + ' discretized Lagrangian is:')
-
-        if verbose_rational:
-            print('\t L_d^n = '
-                  + latex(nsimplify(Ld,
-                                    tolerance=1e-15,
-                                    rational=True)))
-        else:
-            print('\t L_d^n = ' + latex(simplify(Ld)))
-
-        print('The Order ' + repr(2 * r + 2) + ' discretized K-potential is:')
-        if verbose_rational:
-            print('\t K_d^n = '
-                  + latex(nsimplify(Kd,
-                                    tolerance=1e-12,
-                                    rational=verbose_rational)))
-        else:
-            print('\t K_d^n = ' + latex(simplify(Kd)))
-
-        print('********************')
-        print('The Order ' + repr(2 * r + 2) + ' Discretized Equations of motion:')
-
-        if verbose_rational:
-            for dof in range(len(q_Table)):
-                for i in range(r + 1):
-                    print('\t0 = ' + latex(nsimplify(expand(EOM_List[dof * (r + 1) + i]),
-                                                     tolerance=1e-15,
-                                                     rational=verbose_rational)))
-                print('\t0 = ' + latex(nsimplify(-pi_np1_list[dof] + expand(pi_n_expr[dof]),
-                                                 tolerance=1e-15,
-                                                 rational=verbose_rational)))
-
-        else:
-            for dof in range(len(q_Table)):
-                for i in range(r + 1):
-                    print('\t0 = ' + latex(simplify(expand(EOM_List[dof * (r + 1) + i]))))
-                print('\t0 = ' + latex(-pi_np1_list[dof] + simplify(expand(pi_n_expr[dof]))))
-        print('===================================')
-
-    #########################
-    if method == 'implicit':
-        return qi_sol_func_implicit, q_np1_func, pi_np1_func, qdot_n_func
-    elif method == 'explicit':
-        return qi_sol_func_explicit, q_np1_func, pi_np1_func, qdot_n_func
-    else:
-        print("GGL_NC_VI ERROR: method = " + method + " unknown.")
-        return
+    return qi_sol_func_implicit, q_np1_func, pi_np1_func, qdot_n_func
