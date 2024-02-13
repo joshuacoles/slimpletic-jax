@@ -429,9 +429,6 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                       sym_paramlist=[],
                       sym_precision=20,
                       eval_modules="numpy",
-                      method='implicit',
-                      verbose=True,
-                      verbose_rational=True
                       ):
     """Gen_GGL_NC_VI_Map generates the mapping functions for the
     Galerkin-Gauss-Lobatto Nonconservative Variational Integrator
@@ -815,4 +812,9 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                     for qi_vec in qi_table]
         return numpy.array(qdot_vec, dtype=float)
 
-    return qi_sol_func_implicit, q_np1_func, pi_np1_func, qdot_n_func
+    return qi_sol_func_implicit, q_np1_func, pi_np1_func, qdot_n_func, {
+        'dt': ddt_symbol,
+        'L': Lexpr,
+        'Ld': Ld,
+        'q_Table': q_Table
+    }

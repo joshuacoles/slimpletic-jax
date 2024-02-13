@@ -60,7 +60,7 @@ class GalerkinGaussLobatto:
               verbose: Boolean. True to output mapping expressions (default False)
         output: none
         """
-        self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map = ggl.Gen_GGL_NC_VI_Map(
+        self._qi_soln_map, self._q_np1_map, self._pi_np1_map, self._qdot_n_map, self.symbol_map = ggl.Gen_GGL_NC_VI_Map(
             self.t,
             self.q,
             self.qp,
@@ -69,8 +69,6 @@ class GalerkinGaussLobatto:
             self.vp,
             self.vm,
             L, K, order,
-            method=method,
-            verbose=verbose
         )
 
     def integrate(
@@ -120,6 +118,29 @@ class GalerkinGaussLobatto:
 
         # Return the numerical solutions
         return q_list_soln[:-1], pi_list_soln[:-1], qdot_list_soln[:-1]
+
+    def lagrangian(self, q, v, t: float):
+        l_expr = self.symbol_map['L']
+
+        return float(l_expr.subs([
+            *zip(self.q, q),
+            *zip(self.v, v),
+            (self.t, t)
+        ]))
+
+    def lagrangian_d(self, qi_vec, t0, dt):
+        Ld = self.symbol_map['Ld']
+        qi_table = self.symbol_map['q_Table']
+        subs = [(self.symbol_map['dt'], dt)]
+
+        # TODO: Test this with higher r and dof values
+        # TODO: Test with t dependent Ld
+        for i in range(len(qi_vec)):
+            for dof in range(len(qi_vec[i])):
+                subs.append((qi_table[dof][i], qi_vec[i][dof]))
+
+        ld_subs = Ld.subs(subs)
+        return float(ld_subs)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value, dt):
         return self._qi_soln_map(previous_q, previous_pi, t_value, dt)
