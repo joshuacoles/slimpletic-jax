@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from functools import partial
 
 import jax
 
@@ -14,7 +14,6 @@ from slimpletic.helpers import fill_out_initial
 # Frozen helps ensure we don't accidentally mutate the object, which while with the hash function may not cause
 # breakage with JAX, it's still a good idea to avoid as there is redundant state in the object which could become out of
 # sync.
-@dataclass(unsafe_hash=True)
 class Solver:
     r: int
     dt: float
@@ -59,7 +58,6 @@ class Solver:
         return jnp.dot(self.ws, fn_i)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
-
         optimiser_result = self.optimiser.run(
             fill_out_initial(previous_q, r=self.r - 1),
             t_value,
@@ -107,6 +105,7 @@ class Solver:
 
         return next_state, next_state
 
+    @partial(jax.jit, static_argnums=(0, 4))
     def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, t_sample_count: int):
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
