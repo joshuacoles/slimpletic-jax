@@ -62,7 +62,7 @@ class GalerkinGaussLobatto:
               verbose: Boolean. True to output mapping expressions (default False)
         output: none
         """
-        self._qi_soln_map, self._q_np1_map, self.compute_pi_next_inner, self._qdot_n_map, self.symbol_map = ggl.Gen_GGL_NC_VI_Map(
+        self.compute_qi_values_inner, self._q_np1_map, self.compute_pi_next_inner, self._qdot_n_map, self.symbol_map = ggl.Gen_GGL_NC_VI_Map(
             self.t,
             self.q,
             self.qp,
@@ -150,7 +150,7 @@ class GalerkinGaussLobatto:
         return float(ld_expr.subs(subs))
 
     def compute_qi_values(self, previous_q, previous_pi, t_value, dt):
-        return self._qi_soln_map(previous_q, previous_pi, t_value, dt)
+        return self.compute_qi_values_inner(previous_q, previous_pi, t_value, dt)
 
     def compute_pi_next(self, qi_values, t_value, dt):
         # TODO: Explict time dependence

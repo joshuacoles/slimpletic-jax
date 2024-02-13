@@ -1,13 +1,10 @@
-from harness import original, solver, lagrangian_f, L, r, dt
+from harness import original, solver, lagrangian_f, L, r, dt, dof
 from jax import numpy as jnp, config as jax_config
 import numpy as np
 
 assert jax_config.read('jax_enable_x64')
 
-
 # The first thing to check is that the lagrangians are actually the same
-
-dof = original.degrees_of_freedom
 
 print("Testing lagrangian")
 for _ in range(100):
@@ -54,15 +51,17 @@ for _ in range(100):
     original_values = original.compute_qi_values(previous_q, previous_pi, t, dt)
     jax_values = solver.compute_qi_values(previous_q, previous_pi, t)
 
-    try:
-        assert jnp.allclose(
-            original_values,
-            jax_values
-        )
-    except AssertionError:
+    if original_values.shape != jax_values.shape:
         print(original_values)
         print(jax_values)
-        print(original_values - jax_values)
-        raise
+        raise AssertionError("Shapes do not match")
+
+    if not jnp.allclose(
+            original_values,
+            jax_values
+    ):
+        print(original_values)
+        print(jax_values)
+        raise AssertionError("Values do not match")
 
 print("Success")
