@@ -51,70 +51,35 @@ def GGLdefs(r, precision=20):
     return GGLxs, GGLws, GGLDM
 
 
-def q_Generate_pm(qlist):
-    """q_Generate_pm generates the plus and minus doubled variables of qlist
-    Output:
-    (qplist, qmlist)
-    qplist[dof] - the list of symbols of the form q_+
-    qmlist[dof] - the list of symbols of the form q_-
-
-    Input:
-    qlist[dof] - the 1-d list of symbols that you want to double
-    """
-    qplist = []
-    qmlist = []
-    for i in range(len(qlist)):
-        qplist.append(Symbol(repr(qlist[i]) + '_+', real=True))
-        qmlist.append(Symbol(repr(qlist[i]) + '_-', real=True))
-    return qplist, qmlist
+def generate_pm_symbols(sym_list):
+    p_list = [Symbol(repr(q) + '_+', real=True) for q in sym_list]
+    m_list = [Symbol(repr(q) + '_-', real=True) for q in sym_list]
+    return p_list, m_list
 
 
-def Gen_pi_list(qlist):
-    """Generate_pi generates the symbol list for the nonconservative
-    discrete momenta pi
-    Output: (pi_n_list, pi_np1_list)
-    pi_n_list[dof] - list of symbols for the current pi_n
-    pi_np1_list[dof] - list of symbols for the next pi_n+1
-    Input:
-    qlist[dof] - the 1-d list of symbols that you want make
-                 momenta for
-    """
-    pi_n_list = []
-    pi_np1_list = []
-    for i in range(len(qlist)):
-        pi_n_list.append(Symbol("\pi_" + repr(qlist[i]) + "^{[n]}", real=True))
-        pi_np1_list.append(Symbol("\pi_" + repr(qlist[i]) + "^{[n+1]}", real=True))
+def generate_pi_symbols(qlist):
+    pi_n_list = [Symbol("\\pi_" + repr(q) + "^{[n]}", real=True) for q in qlist]
+    pi_np1_list = [Symbol("\\pi_" + repr(q) + "^{[n+1]}", real=True) for q in qlist]
     return pi_n_list, pi_np1_list
 
 
-def Physical_Limit(q_list, q_p_list, q_m_list, expression):
-    """ Physical_Limit takes the physical limit of a function of
-    the doubled +/- variables that is taking q_- -> 0 and q_+ -> q
-    The q_lists are expected to be 1-d lists.
-    If you are passing in q_tables please flatten them using
-    something like:
-    q_list = [qval for qvallist in qtable for qval in qvallist]
-
-    Physical_Limit outputs PL_Expr an sympy object equivalent to
-    expression with the physical limit taken.
-
-    Inputs:
-    q_list[dof] - list of sympy objects that correspond to the dof
-    q_p_list[dof] - list of sympy objects that correspond to the + dof
-    q_m_list[dof] - list of sympy objects that corerspond to the - dof
-
-    Physical_Limit assumes that the q_lists share the same ordering.
+def apply_physical_limit(q_list: list[Symbol], q_p_list: list[Symbol], q_m_list: list[Symbol], expression: Expr):
     """
+    Applies the Physical Limit to a given expression. This is the limit where:
 
+        - q_m -> 0
+        - q_p -> q
+
+    NOTE: That the various lists are assumed to be of the same length and in the same order.
+    """
     dof_count = len(q_list)
+    qm_constraints = [(q_m_list[i], 0) for i in range(dof_count)]
+    qp_constraints = [(q_p_list[i], q_list[i]) for i in range(dof_count)]
 
-    sub_list = []
-    for dof in range(dof_count):
-        sub_list.append((q_p_list[dof], q_list[dof]))
-        sub_list.append((q_m_list[dof], 0))
-
-    PL_Expr = expression.subs(sub_list)
-    return PL_Expr
+    return expression.subs([
+        *qm_constraints,
+        *qp_constraints
+    ])
 
 
 def GGL_q_Collocation_Table(qlist, cp_count):
@@ -343,10 +308,10 @@ def Gen_iter_EOM_List(q_Table, q_p_Table, q_m_Table, pi_n_list, pi_np1_list, Ld,
     Ld_EOM_Table = [[diff(Ld, q)
                      for q in qvec]
                     for qvec in q_Table]
-    Kd_EOM_Table = [[Physical_Limit(q_longlist,
-                                    q_p_longlist,
-                                    q_m_longlist,
-                                    diff(Kd, q_m))
+    Kd_EOM_Table = [[apply_physical_limit(q_longlist,
+                                          q_p_longlist,
+                                          q_m_longlist,
+                                          diff(Kd, q_m))
                      for q_m in qvec]
                     for qvec in q_m_Table]
 
@@ -596,7 +561,7 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                      precision=sym_precision)
 
     # Generate momenta symbol lists
-    pi_n_list, pi_np1_list = Gen_pi_list(q_list)
+    pi_n_list, pi_np1_list = generate_pi_symbols(q_list)
 
     # Generate the Equation of Motion Table for
     # q^[n] and q^(i)'s, but not q^[n+1]
@@ -776,10 +741,10 @@ def Gen_GGL_NC_VI_Map(t_symbol,
     q_p_longlist = [q for qvec in q_p_Table for q in qvec]
     q_m_longlist = [q for qvec in q_m_Table for q in qvec]
     pi_n_expr = [diff(Ld, q_Table[dof][-1])
-                 + Physical_Limit(q_longlist,
-                                  q_p_longlist,
-                                  q_m_longlist,
-                                  diff(Kd, q_m_Table[dof][-1]))
+                 + apply_physical_limit(q_longlist,
+                                        q_p_longlist,
+                                        q_m_longlist,
+                                        diff(Kd, q_m_Table[dof][-1]))
                  for dof in range(len(q_Table))]
     # return pi_n_expr
 

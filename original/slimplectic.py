@@ -41,8 +41,8 @@ class GalerkinGaussLobatto:
         self.v = [ggl.Symbol(vv, real=True) for vv in v_list]
 
         # Double the sympy variables
-        self.qp, self.qm = ggl.q_Generate_pm(self.q)
-        self.vp, self.vm = ggl.q_Generate_pm(self.v)
+        self.qp, self.qm = ggl.generate_pm_symbols(self.q)
+        self.vp, self.vm = ggl.generate_pm_symbols(self.v)
         self.modlist = mod_list or []
 
     def keys(self):
