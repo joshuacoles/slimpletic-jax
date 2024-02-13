@@ -881,7 +881,7 @@ def Gen_GGL_NC_VI_Map(t_symbol,
         # print qi_sol, q_n_vec, pi_n_vec, ddt
         # print pi_np1_vec
 
-        print(f'pi_np1_func: pi_np1_vec = {pi_n_expr} in context {full_variable_list} = {EOM_Arg_list}')
+        # print(f'pi_np1_func: pi_np1_vec = {pi_n_expr} in context {full_variable_list} = {EOM_Arg_list}')
         return numpy.array(pi_np1_vec)
 
     # We need DM for the dotq function
