@@ -25,10 +25,10 @@ def GGLdefs(r, precision=20):
 
     # find collocation points for the Gauss-Lobatto quadrature
     x = symbols('x')
-    GGLxs = list(map(
-        nprec,
-        polys.polytools.real_roots((x ** 2 - 1) * diff(legendre(n, x), x), n + 1)
-    ))
+    GGLxs = list(map(nprec,
+                     polys.polytools.real_roots(
+                         (x ** 2 - 1) * diff(legendre(n, x), x),
+                         n + 1)))
 
     # Determine the weight functions
     GGLws = list(map(nprec, [2 / (n * (n + 1) * (legendre(n, xj)) ** 2) for xj in GGLxs]))
@@ -466,8 +466,7 @@ def Gen_GGL_NC_VI_Map(t_symbol,
                       eval_modules="numpy",
                       method='implicit',
                       verbose=True,
-                      verbose_rational=True,
-                      debug_escape_info=None
+                      verbose_rational=True
                       ):
     """Gen_GGL_NC_VI_Map generates the mapping functions for the
     Galerkin-Gauss-Lobatto Nonconservative Variational Integrator
@@ -686,9 +685,6 @@ def Gen_GGL_NC_VI_Map(t_symbol,
         # print out
         return out
 
-    if debug_escape_info is not None:
-        debug_escape_info['EOM_Val_Vec'] = EOM_Val_Vec
-
     # EOM_J_Matrix is the function to be passed
     # to scipy.optimize.root() that returns the
     # Jacobian matrix for
@@ -881,7 +877,6 @@ def Gen_GGL_NC_VI_Map(t_symbol,
         # print qi_sol, q_n_vec, pi_n_vec, ddt
         # print pi_np1_vec
 
-        # print(f'pi_np1_func: pi_np1_vec = {pi_n_expr} in context {full_variable_list} = {EOM_Arg_list}')
         return numpy.array(pi_np1_vec)
 
     # We need DM for the dotq function
