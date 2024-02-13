@@ -704,7 +704,6 @@ def Gen_GGL_NC_VI_Map(t_symbol,
             jac=EOM_J_Matrix,
             **root_args
         )
-
         return qi_sol.x
 
     def q_np1_func(qi_sol, q_n_vec, pi_n_vec, tval, ddt):

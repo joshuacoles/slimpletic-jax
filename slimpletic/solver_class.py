@@ -59,24 +59,27 @@ class Solver:
         return jnp.dot(self.ws, fn_i)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
+
         optimiser_result = self.optimiser.run(
-            fill_out_initial(previous_q, r=self.r),
+            fill_out_initial(previous_q, r=self.r - 1),
             t_value,
+            previous_q,
             previous_pi
         )
 
-        return optimiser_result.params
+        return jnp.insert(optimiser_result.params, 0, previous_q, axis=0)
 
     def compute_pi_next(self, qi_values, t_value):
         # Eq 13(b)
         dld_dqi_values = self.derivatives(qi_values, t_value)
         return dld_dqi_values[-1]
 
-    def residue(self, q_vec, t, pi0):
+    def residue(self, qi_vec, t, q0, pi0):
         """
         Compute the residue for the optimiser based on Equations 13(a) and 13(c) in the paper.
         """
-        dld_dqi_values = self.derivatives(q_vec, t)
+        combined_qi = jnp.insert(qi_vec, 0, q0, axis=0)
+        dld_dqi_values = self.derivatives(combined_qi, t)
 
         # Eq 13(a), we set the derivative wrt to the initial point to negative of pi0
         eq13a_residue = pi0 + dld_dqi_values[0]
