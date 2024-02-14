@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 import jax
 
@@ -47,21 +47,20 @@ class Solver:
         :return: A new instance which inherits the parameters of the current instance, with the overridden parameters.
         """
         return Solver(
-            r=self.r,
-            dt=self.dt,
-            lagrangian=self.lagrangian,
-            k_potential=self.k_potential,
-            **kwargs
+            r=kwargs.get('r') or self.r,
+            dt=kwargs.get('dt') or self.dt,
+            lagrangian=kwargs.get('lagrangian') or self.lagrangian,
+            k_potential=kwargs.get('k_potential') or self.k_potential,
         )
 
     def __init__(self, r: int, dt: float, lagrangian: Callable[[Any, Any, Any], Any],
-                 k_potential: Callable[[Any, Any, Any, Any, Any], Any]):
+                 k_potential: Union[None, Callable[[Any, Any, Any, Any, Any], Any]]):
         self.r = r
         self.xs, self.ws, self.dij = dereduce(ggl(r), dt)
         self.dt = dt
 
         self.lagrangian = lagrangian
-        self.k_potential = k_potential
+        self.k_potential = k_potential or (lambda *args: 0)
 
         # Note these arg-numbers are on the *bound* methods and hence skips the self argument
         self.k_derivatives = jax.grad(self.k_potential_d, argnums=(0, 1))
@@ -167,12 +166,13 @@ class Solver:
         return next_state, next_state
 
     @partial(jax.jit, static_argnums=(0, 4))
-    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, t_sample_count: int):
+    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int):
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
 
-        # These are the values of t which we will sample the solution at.
-        t_samples = t0 + jnp.arange(t_sample_count) * self.dt
+        # These are the values of t which we will sample the solution at. This does not include the initial value of t
+        # as the initial state of the system is already known.
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
         _, (q, pi) = jax.lax.scan(
             f=self.compute_next,
@@ -181,12 +181,12 @@ class Solver:
         )
 
         # We need to add the initial values back into the results.
-        q_with_initial = jnp.insert(q, 0, q0)
-        pi_with_initial = jnp.insert(pi, 0, pi0)
+        q_with_initial = jnp.insert(q, 0, q0, axis=0)
+        pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
 
         return q_with_initial, pi_with_initial
 
-    def integrate_manual(self, q0, pi0, t0, t_sample_count):
+    def integrate_manual(self, q0, pi0, t0, iterations):
         """
         This is a manual implementation of the integrate function, which is useful for debugging and understanding the
         code. It is not recommended for production use as it is *much* slower than the standard integrate function.
@@ -194,8 +194,9 @@ class Solver:
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
 
-        # These are the values of t which we will sample the solution at.
-        t_samples = t0 + jnp.arange(t_sample_count) * self.dt
+        # These are the values of t which we will sample the solution at. This does not include the initial value of t
+        # as the initial state of the system is already known.
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
         q = [q0]
         pi = [pi0]

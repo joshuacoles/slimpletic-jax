@@ -14,10 +14,10 @@ ll = 0.5 * np.sqrt(m * k)  # ll is $\lambda$ in the paper
 
 # Simulation and Method parameters
 dt = 0.1 * np.sqrt(m / k)
-t_sample_count = 100
-tmax = t_sample_count * np.sqrt(m / k)
+iterations = 100
+tmax = iterations * np.sqrt(m / k)
 t0 = 1
-t = t0 + dt * np.arange(0, t_sample_count + 1)
+t = t0 + dt * np.arange(0, iterations + 1)
 r = 0
 
 # Initial conditions
@@ -46,7 +46,7 @@ solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
 dof = original.degrees_of_freedom
 
 jax_start_time = time.time()
-jax_results = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
+jax_q, jax_pi = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, iterations=iterations)
 jax_end_time = time.time()
 jax_time = jax_end_time - jax_start_time
 print(f"JAX time: {jax_time}")
@@ -63,6 +63,6 @@ original_end_time = time.time()
 original_time = original_end_time - original_start_time
 print(f"Original time: {original_time}")
 
-plt.plot(t, jax_results[0])
+plt.plot(t, jax_q)
 plt.plot(t, original_results[0], linestyle='dashed')
 plt.show()

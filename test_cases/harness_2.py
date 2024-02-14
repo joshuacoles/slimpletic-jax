@@ -56,7 +56,7 @@ for _ in range(100):
 
 print("Success")
 
-jax_results = hybrid.integrate_manual(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
+jax_t, jax_q, jax_pi = hybrid.integrate_manual(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
 original_results = original.integrate(
     q0=np.array(q0),
     pi0=np.array(pi0),
@@ -64,12 +64,12 @@ original_results = original.integrate(
     dt=dt,
 )
 
-plt.plot(t, jax_results[0], label='JAX')
+plt.plot(jax_t, jax_q, label='JAX')
 plt.plot(t, original_results[0], label='Original')
 plt.title('q')
 plt.show()
 
-plt.plot(t, jax_results[1], label='JAX')
+plt.plot(jax_t, jax_pi, label='JAX')
 plt.plot(t, original_results[1], label='Original')
 plt.title('pi')
 plt.show()

@@ -40,5 +40,5 @@ def lagrangian_f(q, v, t):
     return 0.5 * m * jnp.dot(v, v) - 0.5 * k * jnp.dot(q, q)
 
 
-solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=lambda qp, qm, qp_dot, qm_dot, t: 0)
+solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=None)
 dof = original.degrees_of_freedom
