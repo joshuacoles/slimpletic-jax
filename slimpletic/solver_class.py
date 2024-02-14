@@ -21,6 +21,9 @@ class Solver:
     lagrangian: callable
     derivatives: callable
 
+    k_potential: callable
+    k_derivatives: callable
+
     xs: jnp.ndarray
     ws: jnp.ndarray
     dij: jnp.ndarray
@@ -34,28 +37,46 @@ class Solver:
         else:
             super().__setattr__(key, value)
 
-    def __init__(self, r: int, dt: float, lagrangian: callable):
+    def __init__(self, r: int, dt: float, lagrangian: callable, k_potential: callable):
         self.r = r
         self.xs, self.ws, self.dij = dereduce(ggl(r), dt)
         self.dt = dt
 
         self.lagrangian = lagrangian
         self.derivatives = jax.grad(self.lagrangian_d, argnums=0)
+        self.k_potential = k_potential
+        self.k_derivatives = jax.grad(self.k_potential_d, argnums=(0, 1))
         self.optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
         self._sealed = True
 
     def lagrangian_d(self, qi_vec, t0):
-        t_quadrature_offsets = (1 + self.xs) * self.dt / 2
+        # Eq. 4 (part 2)
+        t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
 
         # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
         qidot_vec = jax.numpy.matmul(self.dij, qi_vec)
 
-        # Eq. 4 (part 2)
-        t_quadrature_values = t0 + t_quadrature_offsets
-
         # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
         fn_i = jax.vmap(self.lagrangian)(qi_vec, qidot_vec, t_quadrature_values)
         return jnp.dot(self.ws, fn_i)
+
+    def k_potential_d(
+            self,
+            qi_plus_vec,
+            qi_minus_vec,
+            t0
+    ):
+        # Eq. 4 (part 2)
+        t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
+
+        # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
+        qi_plus_dot_vec = jax.numpy.matmul(self.dij, qi_plus_vec)
+        qi_minus_dot_vec = jax.numpy.matmul(self.dij, qi_minus_vec)
+
+        # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
+        fn_i = jax.vmap(self.k_potential)(qi_plus_vec, qi_minus_vec, qi_plus_dot_vec, qi_minus_dot_vec, t_quadrature_values)
+        return jnp.dot(self.ws, fn_i)
+
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
         optimiser_result = self.optimiser.run(
