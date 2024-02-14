@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Any, Callable
 
 import jax
 
@@ -10,10 +11,6 @@ from slimpletic.ggl import ggl, dereduce
 from slimpletic.helpers import fill_out_initial
 
 
-# Unsafe hash is required as JAX requires static values be hashable.
-# Frozen helps ensure we don't accidentally mutate the object, which while with the hash function may not cause
-# breakage with JAX, it's still a good idea to avoid as there is redundant state in the object which could become out of
-# sync.
 class Solver:
     r: int
     dt: float
@@ -32,12 +29,33 @@ class Solver:
     _sealed: bool = False
 
     def __setattr__(self, key, value):
+        """
+        When running under JAX JIT, our methods will not be recomputed if the object is mutated. Hence to avoid bugs we
+        seal the object after creation.
+        """
         if self._sealed:
-            raise FrozenError("You cannot edit the solver after it has been created.")
+            raise FrozenError("You cannot edit the solver after it has been created. Use create_similar to create a "
+                              "new instance with the same parameters.")
         else:
             super().__setattr__(key, value)
 
-    def __init__(self, r: int, dt: float, lagrangian: callable, k_potential: callable):
+    def create_similar(self, **kwargs):
+        """
+        This is a helper function to create a new instance of the solver with the same parameters as the current one.
+
+        :param kwargs: The parameters to override in the new instance.
+        :return: A new instance which inherits the parameters of the current instance, with the overridden parameters.
+        """
+        return Solver(
+            r=self.r,
+            dt=self.dt,
+            lagrangian=self.lagrangian,
+            k_potential=self.k_potential,
+            **kwargs
+        )
+
+    def __init__(self, r: int, dt: float, lagrangian: Callable[[Any, Any, Any], Any],
+                 k_potential: Callable[[Any, Any, Any, Any, Any], Any]):
         self.r = r
         self.xs, self.ws, self.dij = dereduce(ggl(r), dt)
         self.dt = dt
@@ -52,34 +70,34 @@ class Solver:
         self.optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
         self._sealed = True
 
-    def lagrangian_d(self, qi_vec, t0):
+    def lagrangian_d(self, qi_values, t0):
         # Eq. 4 (part 2)
         t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
 
         # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
-        qidot_vec = jax.numpy.matmul(self.dij, qi_vec)
+        qidot_vec = jax.numpy.matmul(self.dij, qi_values)
 
         # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
-        fn_i = jax.vmap(self.lagrangian)(qi_vec, qidot_vec, t_quadrature_values)
+        fn_i = jax.vmap(self.lagrangian)(qi_values, qidot_vec, t_quadrature_values)
         return jnp.dot(self.ws, fn_i)
 
     def k_potential_d(
             self,
-            qi_plus_vec,
-            qi_minus_vec,
+            qi_plus_values,
+            qi_minus_values,
             t0
     ):
         # Eq. 4 (part 2)
         t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
 
         # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
-        qi_plus_dot_vec = jax.numpy.matmul(self.dij, qi_plus_vec)
-        qi_minus_dot_vec = jax.numpy.matmul(self.dij, qi_minus_vec)
+        qi_plus_dot_vec = jax.numpy.matmul(self.dij, qi_plus_values)
+        qi_minus_dot_vec = jax.numpy.matmul(self.dij, qi_minus_values)
 
         # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
-        fn_i = jax.vmap(self.k_potential)(qi_plus_vec, qi_minus_vec, qi_plus_dot_vec, qi_minus_dot_vec, t_quadrature_values)
+        fn_i = jax.vmap(self.k_potential)(qi_plus_values, qi_minus_values, qi_plus_dot_vec, qi_minus_dot_vec,
+                                          t_quadrature_values)
         return jnp.dot(self.ws, fn_i)
-
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
         optimiser_result = self.optimiser.run(
@@ -94,17 +112,33 @@ class Solver:
     def compute_pi_next(self, qi_values, t_value):
         # Eq 13(b)
         dld_dqi_values = self.derivatives(qi_values, t_value)
-        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(qi_values, jnp.zeros_like(qi_values, dtype=float), t_value)
+        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(qi_values,
+                                                                       jnp.zeros_like(qi_values, dtype=float), t_value)
         return dld_dqi_values[-1] + dkd_dqi_minus_values[-1]
 
-    def residue(self, qi_vec, t, q0, pi0):
+    def residue(self, trailing_qi_values, t, q0, pi0):
         """
         Compute the residue for the optimiser based on Equations 13(a) and 13(c) in the paper.
+
+        NOTE: The trailing_qi_values array does not and cannot include the initial value of q at t0 as this is
+        necessarily fixed, and not subject to optimisation. Hence, when passing qi_values around we need to insert the
+        initial value of q back into the array.
+
+        :param trailing_qi_values: The values of q at the quadrature points, **after** the initial point.
+        :param t: The time at which we are computing the residue.
+        :param q0: The initial value of q.
+        :param pi0: The initial value of pi.
+        :return: The residue for the optimiser, this will be zero when the solution is found.
         """
-        combined_qi = jnp.insert(qi_vec, 0, q0, axis=0)
-        dld_dqi_values = self.derivatives(combined_qi, t)
+        qi_values = jnp.insert(trailing_qi_values, 0, q0, axis=0)
+        dld_dqi_values = self.derivatives(qi_values, t)
+
         # Evaluate in the physical limit
-        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(combined_qi, jnp.zeros_like(combined_qi, dtype=float), t)
+        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(
+            qi_values,
+            jnp.zeros_like(qi_values, dtype=float),
+            t
+        )
 
         # Eq 13(a), we set the derivative wrt to the initial point to negative of pi0
         eq13a_residue = pi0 + dld_dqi_values[0] + dkd_dqi_minus_values[0]
