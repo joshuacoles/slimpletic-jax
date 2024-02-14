@@ -14,3 +14,8 @@
 - [x] Write in code documentation for the Solver
 - [ ] Speed test on my M2 Mac and on the GPU box
   - Does it work with JAX on Metal?
+
+### PostNewtonian
+
+- [ ] Issues with the final graphs
+- [ ] Also why is the RK result different???
