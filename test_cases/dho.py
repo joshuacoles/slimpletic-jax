@@ -3,7 +3,6 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import jax.numpy as jnp
-import jax
 
 from slimpletic import Solver
 from original import GalerkinGaussLobatto
@@ -31,7 +30,7 @@ L = 0.5 * m * np.dot(original.v, original.v) - 0.5 * k * np.dot(original.q, orig
 
 # DHO:
 K = -ll * np.dot(original.vp, original.qm)
-original.discretize(L, K, r, method='implicit', verbose=False)
+original.discretize(L, K, r)
 
 
 # JAX Method
@@ -40,15 +39,11 @@ def lagrangian_f(q, v, t):
 
 
 def k_potential_f(qp, qm, vp, vm, t):
-    return -ll * jnp.dot(vp, vm)
+    return -ll * jnp.dot(vp, qm)
 
 
 solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
 dof = original.degrees_of_freedom
-
-# A warm-up run to see if we this will increase the speed of the JAX version
-# on the assumption we are capturing a large fixed cost, eg JIT compilation
-solver.integrate(jnp.array(q0), jnp.array(pi0), t0, 10)
 
 jax_start_time = time.time()
 jax_results = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
@@ -69,5 +64,5 @@ original_time = original_end_time - original_start_time
 print(f"Original time: {original_time}")
 
 plt.plot(t, jax_results[0])
-plt.plot(t, original_results[0])
+plt.plot(t, original_results[0], linestyle='dashed')
 plt.show()
