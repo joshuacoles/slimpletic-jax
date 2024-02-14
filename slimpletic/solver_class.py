@@ -43,9 +43,12 @@ class Solver:
         self.dt = dt
 
         self.lagrangian = lagrangian
-        self.derivatives = jax.grad(self.lagrangian_d, argnums=0)
         self.k_potential = k_potential
+
+        # Note these arg-numbers are on the *bound* methods and hence skips the self argument
         self.k_derivatives = jax.grad(self.k_potential_d, argnums=(0, 1))
+        self.derivatives = jax.grad(self.lagrangian_d, argnums=0)
+
         self.optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
         self._sealed = True
 
@@ -91,7 +94,8 @@ class Solver:
     def compute_pi_next(self, qi_values, t_value):
         # Eq 13(b)
         dld_dqi_values = self.derivatives(qi_values, t_value)
-        return dld_dqi_values[-1]
+        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(qi_values, jnp.zeros_like(qi_values, dtype=float), t_value)
+        return dld_dqi_values[-1] + dkd_dqi_minus_values[-1]
 
     def residue(self, qi_vec, t, q0, pi0):
         """
@@ -99,12 +103,14 @@ class Solver:
         """
         combined_qi = jnp.insert(qi_vec, 0, q0, axis=0)
         dld_dqi_values = self.derivatives(combined_qi, t)
+        # Evaluate in the physical limit
+        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(combined_qi, jnp.zeros_like(combined_qi, dtype=float), t)
 
         # Eq 13(a), we set the derivative wrt to the initial point to negative of pi0
-        eq13a_residue = pi0 + dld_dqi_values[0]
+        eq13a_residue = pi0 + dld_dqi_values[0] + dkd_dqi_minus_values[0]
 
         # Eq 13(c), we set the derivative wrt to each interior point to zero
-        eq13c_residues = dld_dqi_values[1:-1]
+        eq13c_residues = dld_dqi_values[1:-1] + dkd_dqi_minus_values[1:-1]
 
         return jnp.append(
             eq13c_residues,
