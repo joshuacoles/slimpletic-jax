@@ -166,9 +166,26 @@ class Solver:
         return next_state, next_state
 
     @partial(jax.jit, static_argnums=(0, 4))
-    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int):
+    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time'):
+        """
+        Integrate the system using the slimpletic method.
+
+        :param q0: The initial value of q, expected to be a jnp array of shape (dof,)
+        :param pi0: The initial value of pi, expected to be a jnp array of shape (dof,)
+        :param t0: The initial value of t
+        :param iterations: How many iterations of size dt to perform when integrating the system.
+        :param result_orientation: If results should be returned such that array[i] is the value of the i-th coordinate
+        along the time axis, or if array[i] is the value of the coordinates at the i-th time step.
+        :return: The values of q and pi along the evolution of the system, oriented as specified by `result_orientation`.
+        """
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
+
+        if q0.shape != pi0.shape:
+            raise ValueError("q0 and pi0 must have the same shape.")
+
+        if result_orientation not in ['time', 'coordinate']:
+            raise ValueError("orientation must be either 'time' or 'coordinate'.")
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
@@ -184,13 +201,21 @@ class Solver:
         q_with_initial = jnp.insert(q, 0, q0, axis=0)
         pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
 
-        return q_with_initial, pi_with_initial
+        if result_orientation == 'time':
+            return q_with_initial, pi_with_initial
+        else:
+            return q_with_initial.T, pi_with_initial.T
 
-    def integrate_manual(self, q0, pi0, t0, iterations):
+    def _integrate_manual(self, q0, pi0, t0, iterations):
         """
         This is a manual implementation of the integrate function, which is useful for debugging and understanding the
-        code. It is not recommended for production use as it is *much* slower than the standard integrate function.
+        code. It is not recommended for usage use as it is *much* slower than the standard integrate function, and
+        does not implement all the same features.
         """
+        import sys
+        print("Warning: Using manual integration, this is much slower than the standard integration function with fewer"
+              " features. This should only be used for debugging.", file=sys.stderr)
+
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
 

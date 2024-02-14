@@ -24,7 +24,7 @@ class Hybrid(Solver):
 
     def integrate(self, *args, **kwargs):
         print("WARNING: Using manual integration as the hybrid method does not support JAX JIT.")
-        return self.integrate_manual(*args, **kwargs)
+        return self._integrate_manual(*args, **kwargs)
 
 hybrid = Hybrid(
     r=r,
@@ -56,7 +56,7 @@ for _ in range(100):
 
 print("Success")
 
-jax_t, jax_q, jax_pi = hybrid.integrate_manual(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
+jax_t, jax_q, jax_pi = hybrid._integrate_manual(jnp.array(q0), jnp.array(pi0), t0, t_sample_count)
 original_results = original.integrate(
     q0=np.array(q0),
     pi0=np.array(pi0),

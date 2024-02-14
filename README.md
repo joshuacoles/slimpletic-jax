@@ -5,7 +5,7 @@
 - [x] Make the names consistent in `Solver`
 - [x] Check why I have a different fractional energy error (DHO notebook, last graph)
   - Boom it works!
-- [ ] Test in 2D system
+- [x] Test in 2D system
 - [ ] Test in time dependent system
 - [x] Make consistent the treatment of `t`, atm I am having to manually fudge everything
   - I think this is done? 
