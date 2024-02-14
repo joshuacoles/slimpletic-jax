@@ -1,17 +1,8 @@
 # Slimplectic Integration -- JAX Edition
 
-For a given discretised interval:
+## TOOD
 
-1. Discretise lagrangian
-2. Form differential equation system
-3. Solve differential equation system
-
-Then loop for each interval
-
-
-- [x] Quadrature computation
-- [ ] Discretise lagrangian
-  - Mostly done, test
-- [ ] Form differential equation system
-- [ ] Solve differential equation system
-
+- [ ] Make the names consistent in `Solver`
+- [ ] Check why I have a different fractional energy error (DHO notebook, last graph)
+- [ ] Test in 2D system
+- [ ] Test in time dependent system
