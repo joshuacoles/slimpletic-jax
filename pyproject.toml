@@ -18,6 +18,9 @@ matplotlib = "^3.8.2"
 pydantic = "^2.6.1"
 mpld3 = "^0.5.10"
 
+[tool.poetry.group.dev.dependencies]
+setuptools = "^69.1.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
