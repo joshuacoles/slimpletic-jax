@@ -12,12 +12,16 @@ from slimpletic.solver_class import zero_function
 
 
 class GGLBundle:
+    """
+    A bundle of the values of the GGL quadrature method, which are used to compute the values of the quadrature points.
+    
+    The computation of these is kept separate from the DiscretisedSystem class as they are not expected to change, and
+    are less amenable to JIT compilation and gradient computation.
+    """
+
     def __init__(self, r: int):
         self.r = r
         self.xs, self.ws, self.dij = ggl(r)
-
-    def __setattr__(self, key, value):
-        raise AttributeError("GGLBundle is immutable.")
 
 
 class DiscretisedSystem:
@@ -46,10 +50,12 @@ class DiscretisedSystem:
         self.k_potential = k_potential or zero_function
 
         if jit:
-            self.lagrangian_d = jax.jit(self.lagrangian_d)
-            self.k_potential_d = jax.jit(self.k_potential_d)
+            self.compute_next = jax.jit(self.compute_next)
+
+        self._optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
 
     def lagrangian_d(self, qi_values, t0):
+        print("LAG_D")
         # Eq. 4 (part 2)
         t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
 
@@ -92,18 +98,10 @@ class DiscretisedSystem:
         # Note these arg-numbers are on the *bound* methods and hence skips the self argument
         return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0)
 
-
-class Solver:
-    def __init__(
-            self,
-            system: DiscretisedSystem,
-    ):
-        self.system = system
-        self._optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
-
     def compute_qi_values(self, previous_q, previous_pi, t_value):
+        print("COMPUTE_QI_VALUES")
         optimiser_result = self._optimiser.run(
-            fill_out_initial(previous_q, r=self.system.r - 1),
+            fill_out_initial(previous_q, r=self.r - 1),
             t_value,
             previous_q,
             previous_pi
@@ -113,10 +111,10 @@ class Solver:
 
     def compute_pi_next(self, qi_values, t_value):
         # Eq 13(b)
-        dld_dqi_values = self.system.derivatives(qi_values, t_value)
-        dkd_dqi_plus_values, dkd_dqi_minus_values = self.system.k_derivatives(qi_values,
-                                                                              jnp.zeros_like(qi_values, dtype=float),
-                                                                              t_value)
+        dld_dqi_values = self.derivatives(qi_values, t_value)
+        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(qi_values,
+                                                                       jnp.zeros_like(qi_values, dtype=float),
+                                                                       t_value)
         return dld_dqi_values[-1] + dkd_dqi_minus_values[-1]
 
     def residue(self, trailing_qi_values, t, q0, pi0):
@@ -133,11 +131,12 @@ class Solver:
         :param pi0: The initial value of pi.
         :return: The residue for the optimiser, this will be zero when the solution is found.
         """
+        print("RESIDUE")
         qi_values = jnp.insert(trailing_qi_values, 0, q0, axis=0)
-        dld_dqi_values = self.system.derivatives(qi_values, t)
+        dld_dqi_values = self.derivatives(qi_values, t)
 
         # Evaluate in the physical limit
-        dkd_dqi_plus_values, dkd_dqi_minus_values = self.system.k_derivatives(
+        dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(
             qi_values,
             jnp.zeros_like(qi_values, dtype=float),
             t
@@ -159,6 +158,7 @@ class Solver:
             previous_state,
             t_value
     ):
+        print("COMPUTE_NEXT")
         (previous_q, previous_pi) = previous_state
         qi_values = self.compute_qi_values(previous_q, previous_pi, t_value)
 
@@ -184,11 +184,13 @@ class Solver:
         :param q0: The initial value of q, expected to be a jnp array of shape (dof,)
         :param pi0: The initial value of pi, expected to be a jnp array of shape (dof,)
         :param t0: The initial value of t
-        :param iterations: How many iterations of size dt to perform when integrating the system.
+        :param iterations: How many iterations of size dt to perform when integrating the 
         :param result_orientation: If results should be returned such that array[i] is the value of the i-th coordinate
         along the time axis, or if array[i] is the value of the coordinates at the i-th time step.
         :return: The values of q and pi along the evolution of the system, oriented as specified by `result_orientation`.
         """
+        print("INTEGRATE")
+
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
 
@@ -200,7 +202,7 @@ class Solver:
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.system.dt
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
         _, (q, pi) = jax.lax.scan(
             f=self.compute_next,
@@ -232,7 +234,7 @@ class Solver:
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.system.dt
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
         q = [q0]
         pi = [pi0]

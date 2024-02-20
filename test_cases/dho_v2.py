@@ -43,14 +43,14 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, Solver as V2Solver
+from slimpletic.v2_interface import DiscretisedSystem, GGLBundle
 
-solver = V2Solver(DiscretisedSystem(
-    dt=dt,
+solver = DiscretisedSystem(
     ggl_bundle=GGLBundle(r=r),
+    dt=dt,
     lagrangian=lagrangian_f,
     k_potential=k_potential_f,
-))
+)
 
 # solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
 dof = original.degrees_of_freedom
@@ -61,6 +61,13 @@ pi0 = jnp.array(pi0)
 for i in range(1, 10):
     jax_start_time = time.time()
     jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations * i)
+    jax_end_time = time.time()
+    jax_time = jax_end_time - jax_start_time
+    print(f"JAX time: {jax_time}")
+
+for i in range(1, 10):
+    jax_start_time = time.time()
+    jax_q, jax_pi = solver.integrate(q0 * i, pi0, t0, iterations=200)
     jax_end_time = time.time()
     jax_time = jax_end_time - jax_start_time
     print(f"JAX time: {jax_time}")
