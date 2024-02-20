@@ -189,27 +189,7 @@ class DiscretisedSystem:
 
         return (q[-1], pi[-1]), (q, pi)
 
-    def integrate(
-            self,
-            q0: jnp.ndarray,
-            pi0: jnp.ndarray,
-            t0: float,
-            iterations: int,
-            result_orientation: str = 'time'
-    ):
-        """
-        Integrate the system using the slimpletic method.
-
-        :param q0: The initial value of q, expected to be a jnp array of shape (dof,)
-        :param pi0: The initial value of pi, expected to be a jnp array of shape (dof,)
-        :param t0: The initial value of t
-        :param iterations: How many iterations of size dt to perform when integrating the 
-        :param result_orientation: If results should be returned such that array[i] is the value of the i-th coordinate
-        along the time axis, or if array[i] is the value of the coordinates at the i-th time step.
-        :return: The values of q and pi along the evolution of the system, oriented as specified by `result_orientation`.
-        """
-        print(f"INTEGRATE {time.time_ns()}")
-
+    def verify_args(self, q0, pi0, t0, iterations, result_orientation):
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
 
@@ -219,94 +199,145 @@ class DiscretisedSystem:
         if result_orientation not in ['time', 'coordinate']:
             raise ValueError("orientation must be either 'time' or 'coordinate'.")
 
-        if self.batch_size is not None:
-            timer_3 = time.time_ns()
-            # We use numpy to compute the number of batches, as this is static and should NOT be considered during JIT.
-            number_of_batches = np.ceil(iterations / self.batch_size)
-            print("Number of batches: ", number_of_batches)
-            t_samples_extended = t0 + (1 + jnp.arange(self.batch_size * number_of_batches)) * self.dt
-            t_samples_extended = t_samples_extended.reshape(-1, self.batch_size)
-            print("Timer 3: ", (time.time_ns() - timer_3) / 10e9)
-            timer_4 = time.time_ns()
+        if (not isinstance(iterations, int)) and iterations >= 0:
+            raise ValueError("iterations must be an integer greater than or equal to 0")
 
-            qs = []
-            pis = []
-            q_previous = q0
-            pi_previous = pi0
+    def integrate(
+            self,
+            q0: jnp.ndarray,
+            pi0: jnp.ndarray,
+            t0: float,
+            iterations: int,
+            result_orientation: str = 'time'
+    ):
+        raise NotImplementedError
 
-            for i in range(int(number_of_batches)):
-                (q_previous, pi_previous), (q, pi) = self._integrate_inner_batch(
-                    carry=(q_previous, pi_previous),
-                    ts=t_samples_extended[i]
-                )
+# class Solver:
+#     system: DiscretisedSystem
+#
+#     def __init__(self, system: DiscretisedSystem):
+#         self.system = system
+#
+#     def integrate(
+#             self,
+#             q0: jnp.ndarray,
+#             pi0: jnp.ndarray,
+#             t0: float,
+#             iterations: int,
+#             result_orientation: str = 'time'
+#     ):
+#         raise NotImplementedError
 
-                qs.append(q)
-                pis.append(pi)
 
-            q = jnp.concatenate(qs, axis=0)
-            pi = jnp.concatenate(pis, axis=0)
+class SolverScan(DiscretisedSystem):
+    def integrate(
+            self,
+            q0: jnp.ndarray,
+            pi0: jnp.ndarray,
+            t0: float,
+            iterations: int,
+            result_orientation: str = 'time'
+    ):
+        self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
-            print("Timer 4: ", (time.time_ns() - timer_4) / 10e9)
-            timer_5 = time.time_ns()
+        # These are the values of t which we will sample the solution at. This does not include the initial value of t
+        # as the initial state of the system is already known.
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
-            q = q[:iterations]
-            pi = pi[:iterations]
-            print("Timer 5: ", (time.time_ns() - timer_5) / 10e9)
-        else:
-            # These are the values of t which we will sample the solution at. This does not include the initial value of t
-            # as the initial state of the system is already known.
-            t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
+        _, (q, pi) = jax.lax.scan(
+            f=self.compute_next,
+            xs=t_samples,
+            init=(q0, pi0),
+        )
 
-            _, (q, pi) = jax.lax.scan(
-                f=self.compute_next,
-                xs=t_samples,
-                init=(q0, pi0),
-            )
-
-        # This actually takes a long time to compute compared to everything else after JIT
-        timer_6 = time.time_ns()
-        # We need to add the initial values back into the results.
         q_with_initial = jnp.insert(q, 0, q0, axis=0)
         pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
-        print("Timer 6: ", (time.time_ns() - timer_6) / 10e9)
 
         if result_orientation == 'time':
             return q_with_initial, pi_with_initial
         else:
             return q_with_initial.T, pi_with_initial.T
 
-class SolverManual(DiscretisedSystem):
-    def integrate_manual(
-            self,
-            q0,
-            pi0,
-            t0,
-            iterations
-    ):
-        """
-        This is a manual implementation of the integrate function, which is useful for debugging and understanding the
-        code. It is not recommended for usage use as it is *much* slower than the standard integrate function, and
-        does not implement all the same features.
-        """
-        import sys
-        print("Warning: Using manual integration, this is much slower than the standard integration function with fewer"
-              " features. This should only be used for debugging.", file=sys.stderr)
 
-        if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
-            raise ValueError("q0 and pi0 must be jax numpy arrays.")
+class SolverBatchedScan(DiscretisedSystem):
+    """
+    This is a version of the DiscretisedSystem which uses the batched scan function to integrate the system. This is
+    expected to be faster than the standard SolverScan, while losing JIT-ability for the integrate function.
+    """
+
+    def integrate(
+            self,
+            q0: jnp.ndarray,
+            pi0: jnp.ndarray,
+            t0: float,
+            iterations: int,
+            result_orientation: str = 'time'
+    ):
+        self.verify_args(q0, pi0, t0, iterations, result_orientation)
+
+        number_of_batches = np.ceil(iterations / self.batch_size)
+        self.verify_args(q0, pi0, t0, iterations, result_orientation)
+        t_samples_extended = t0 + (1 + jnp.arange(self.batch_size * number_of_batches)) * self.dt
+        t_samples_batched = t_samples_extended.reshape(-1, self.batch_size)
+
+        qs = []
+        pis = []
+        q_previous = q0
+        pi_previous = pi0
+
+        for i in range(int(number_of_batches)):
+            (q_previous, pi_previous), (q, pi) = self._integrate_inner_batch(
+                carry=(q_previous, pi_previous),
+                ts=t_samples_batched[i]
+            )
+
+            qs.append(q)
+            pis.append(pi)
+
+        q = jnp.concatenate(qs, axis=0)
+        pi = jnp.concatenate(pis, axis=0)
+
+        q = q[:iterations]
+        pi = pi[:iterations]
+
+        q_with_initial = jnp.insert(q, 0, q0, axis=0)
+        pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
+
+        if result_orientation == 'time':
+            return q_with_initial, pi_with_initial
+        else:
+            return q_with_initial.T, pi_with_initial.T
+
+
+class SolverManual(DiscretisedSystem):
+    def integrate(
+            self,
+            q0: jnp.ndarray,
+            pi0: jnp.ndarray,
+            t0: float,
+            iterations: int,
+            result_orientation: str = 'time'
+    ):
+        self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
         t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
-        q = [q0]
-        pi = [pi0]
+        qs = [q0]
+        pis = [pi0]
 
         carry = (q0, pi0)
 
         for t in t_samples:
             carry, (q_next, pi_next) = self.compute_next(carry, t)
-            q.append(q_next)
-            pi.append(pi_next)
+            qs.append(q_next)
+            pis.append(pi_next)
 
-        return jnp.stack(q), jnp.stack(pi)
+        q = jnp.stack(qs)
+        pi = jnp.stack(pis)
+
+        if result_orientation == 'time':
+            return q, pi
+        else:
+            return q.T, pi.T

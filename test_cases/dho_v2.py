@@ -1,12 +1,10 @@
 import random
 import time
 
-import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import jax.numpy as jnp
 
-from slimpletic import Solver
 from original import GalerkinGaussLobatto
 
 # System parameters, used in both methods
@@ -44,9 +42,9 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-from slimpletic.v2_interface import DiscretisedSystem, GGLBundle
+from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, SolverScan
 
-solver = DiscretisedSystem(
+solver = SolverScan(
     ggl_bundle=GGLBundle(r=r),
     dt=dt,
     lagrangian=lagrangian_f,
