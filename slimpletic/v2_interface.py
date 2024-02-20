@@ -178,8 +178,6 @@ class DiscretisedSystem:
             carry: tuple[jnp.ndarray, jnp.ndarray],
             ts: jnp.ndarray,
     ):
-        jax.debug.print("JAX INTEGRATE_INNER_BATCH")
-        print(f"INTEGRATE_INNER_BATCH {self.batch_size, carry, ts}")
         (q0, pi0) = carry
 
         _, (q, pi) = jax.lax.scan(
@@ -212,8 +210,6 @@ class DiscretisedSystem:
         """
         print(f"INTEGRATE {time.time_ns()}")
 
-        timer_1 = time.time_ns()
-
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
 
@@ -222,15 +218,6 @@ class DiscretisedSystem:
 
         if result_orientation not in ['time', 'coordinate']:
             raise ValueError("orientation must be either 'time' or 'coordinate'.")
-
-        print("Timer 1: ", (time.time_ns() - timer_1) / 10e9)
-        timer_2 = time.time_ns()
-
-        # These are the values of t which we will sample the solution at. This does not include the initial value of t
-        # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
-
-        print("Timer 2: ", (time.time_ns() - timer_2) / 10e9)
 
         if self.batch_size is not None:
             timer_3 = time.time_ns()
@@ -243,7 +230,7 @@ class DiscretisedSystem:
             timer_4 = time.time_ns()
 
             qs = []
-            pis=[]
+            pis = []
             q_previous = q0
             pi_previous = pi0
 
@@ -259,29 +246,24 @@ class DiscretisedSystem:
             q = jnp.concatenate(qs, axis=0)
             pi = jnp.concatenate(pis, axis=0)
 
-            # _, (q, pi) = jax.lax.scan(
-            #     f=self._integrate_inner_batch,
-            #     xs=t_samples_extended,
-            #     length=number_of_batches,
-            #     init=(q0, pi0),
-            # )
-
             print("Timer 4: ", (time.time_ns() - timer_4) / 10e9)
             timer_5 = time.time_ns()
-
-            q = jnp.concatenate(q, axis=0)
-            pi = jnp.concatenate(pi, axis=0)
 
             q = q[:iterations]
             pi = pi[:iterations]
             print("Timer 5: ", (time.time_ns() - timer_5) / 10e9)
         else:
+            # These are the values of t which we will sample the solution at. This does not include the initial value of t
+            # as the initial state of the system is already known.
+            t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
+
             _, (q, pi) = jax.lax.scan(
                 f=self.compute_next,
                 xs=t_samples,
                 init=(q0, pi0),
             )
 
+        # This actually takes a long time to compute compared to everything else after JIT
         timer_6 = time.time_ns()
         # We need to add the initial values back into the results.
         q_with_initial = jnp.insert(q, 0, q0, axis=0)
@@ -293,7 +275,14 @@ class DiscretisedSystem:
         else:
             return q_with_initial.T, pi_with_initial.T
 
-    def _integrate_manual(self, q0, pi0, t0, iterations):
+class SolverManual(DiscretisedSystem):
+    def integrate_manual(
+            self,
+            q0,
+            pi0,
+            t0,
+            iterations
+    ):
         """
         This is a manual implementation of the integrate function, which is useful for debugging and understanding the
         code. It is not recommended for usage use as it is *much* slower than the standard integrate function, and
