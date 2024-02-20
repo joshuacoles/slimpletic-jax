@@ -271,9 +271,13 @@ class SolverBatchedScan(Solver):
         print(f"entrance, {time.time_ns()}")
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
+        print(f"post_t_setup_verify, {time.time_ns()}")
         number_of_batches = np.ceil(iterations / self.batch_size)
+        print(f"post_t_setup_compute_n_batches, {time.time_ns()}")
         t_samples_extended = t0 + (1 + jnp.arange(self.batch_size * number_of_batches)) * self.system.dt
+        print(f"post_t_setup_compute_t_samples_extended, {time.time_ns()}")
         t_samples_batched = t_samples_extended.reshape(-1, self.batch_size)
+        print(f"post_t_setup_compute_t_samples_batched, {time.time_ns()}")
 
         print(f"post_t_setup, {time.time_ns()}")
 
