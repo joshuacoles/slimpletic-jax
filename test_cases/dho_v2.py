@@ -14,7 +14,7 @@ ll = 0.5 * np.sqrt(m * k)  # ll is $\lambda$ in the paper
 
 # Simulation and Method parameters
 dt = 0.1 * np.sqrt(m / k)
-iterations = 100
+iterations = 10_000
 tmax = iterations * np.sqrt(m / k)
 t0 = 1
 t = t0 + dt * np.arange(0, iterations + 1)
@@ -42,7 +42,7 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, SolverBatchedScan
+from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, SolverBatchedScan, SolverScan
 
 system = DiscretisedSystem(
     ggl_bundle=GGLBundle(r=r),
@@ -50,6 +50,8 @@ system = DiscretisedSystem(
     lagrangian=lagrangian_f,
     k_potential=k_potential_f,
 )
+
+# solver = SolverScan(system)
 solver = SolverBatchedScan(system, batch_size=100)
 
 # solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
@@ -58,22 +60,11 @@ dof = original.degrees_of_freedom
 q0 = jnp.array(q0)
 pi0 = jnp.array(pi0)
 
-
-for i in range(1, 10):
-    jax_start_time = time.time()
-    jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations * i + random.randint(1, 10))
-    jax_end_time = time.time()
-    jax_time = jax_end_time - jax_start_time
-    print(f"JAX time: {jax_time}")
-#
-# for i in range(1, 10):
-#     jax_start_time = time.time()
-#     jax_q, jax_pi = solver.integrate(q0 * i, pi0, t0, iterations=200)
-#     jax_end_time = time.time()
-#     jax_time = jax_end_time - jax_start_time
-#     print(f"JAX time: {jax_time}")
-
+jax_start_time = time.time()
 jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations)
+jax_end_time = time.time()
+jax_time = jax_end_time - jax_start_time
+print(f"JAX time: {jax_time}")
 
 original_start_time = time.time()
 original_results = original.integrate(

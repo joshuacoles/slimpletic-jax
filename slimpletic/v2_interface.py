@@ -213,7 +213,8 @@ class SolverScan(Solver):
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.system.dt
+        # NOTE: We use np.arange over jnp.arange as iterations is a static argument and np.arange seems to be faster.
+        t_samples = t0 + (1 + np.arange(iterations)) * self.system.dt
 
         _, (q, pi) = jax.lax.scan(
             f=self.system.compute_next,
@@ -221,8 +222,8 @@ class SolverScan(Solver):
             init=(q0, pi0),
         )
 
-        q_with_initial = jnp.insert(q, 0, q0, axis=0)
-        pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
+        q_with_initial = jnp.append(jnp.array([q0]), q, axis=0)
+        pi_with_initial = jnp.append(jnp.array([pi0]), pi, axis=0)
 
         if result_orientation == 'time':
             return q_with_initial, pi_with_initial
@@ -307,6 +308,7 @@ class SolverBatchedScan(Solver):
 
         print(f"post_concat_truncate, {time.time_ns()}")
 
+        # TODO: Replace all things with jnp.append as opposed to jnp.insert
         q_with_initial = jnp.append(jnp.array([q0]), q, axis=0)
         pi_with_initial = jnp.append(jnp.array([pi0]), pi, axis=0)
 
@@ -338,7 +340,7 @@ class SolverManual(Solver):
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.system.dt
+        t_samples = t0 + (1 + np.arange(iterations)) * self.system.dt
 
         qs = [q0]
         pis = [pi0]

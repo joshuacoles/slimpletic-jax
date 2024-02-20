@@ -4,7 +4,7 @@ import jax.lax
 import jax.numpy as jnp
 import numpy as np
 from jax import jit, grad
-from slimpletic import Solver
+from slimpletic.v2_interface import DiscretisedSystem, SolverScan, GGLBundle
 
 
 @jit
@@ -39,17 +39,22 @@ embedding = jnp.array(np.random.rand(9)) * 10
 # ))
 
 
+ggl_bundle = GGLBundle(r=0)
+
+
 def loss_fn(embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarray):
     assert target_q.size == target_pi.size
 
-    solver = Solver(
+    system = DiscretisedSystem(
         dt=0.1,
-        r=0,
+        ggl_bundle=ggl_bundle,
         lagrangian=jit(lambda q, v, t: compute_action(jnp.concat([q, v], axis=0), embedding)),
         k_potential=None
     )
 
-    q, pi = solver.integrate(
+    system_solver = SolverScan(system)
+
+    q, pi = system_solver.integrate(
         q0=jnp.array([1.0, 0.0, 0.0]),
         pi0=jnp.array([0.0, 0.0, 0.0]),
         t0=0,
@@ -59,14 +64,16 @@ def loss_fn(embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarra
     return jnp.sqrt(jnp.mean(jnp.abs(q - target_q) ** 2) + jnp.mean(jnp.abs(pi - target_pi) ** 2))
 
 
-expected_system = Solver(
+expected_system = DiscretisedSystem(
     dt=0.1,
-    r=0,
+    ggl_bundle=ggl_bundle,
     lagrangian=lambda q, v, t: jnp.dot(q, q) + jnp.dot(v, v),
     k_potential=None
 )
 
-exptected_q, expected_pi = expected_system.integrate(
+expected_system_solver = SolverScan(expected_system)
+
+exptected_q, expected_pi = expected_system_solver.integrate(
     q0=jnp.array([1.0, 0.0, 0.0]),
     pi0=jnp.array([0.0, 0.0, 0.0]),
     t0=0.0,
