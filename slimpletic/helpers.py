@@ -18,6 +18,7 @@ def jax_enable_x64():
 
 
 def fill_out_initial(initial, r):
+    # TODO: Replace r with generic count parameter
     return jnp.repeat(initial[jnp.newaxis, :], r + 2, axis=0)
 
 

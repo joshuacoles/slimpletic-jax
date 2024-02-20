@@ -43,23 +43,29 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
+from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, Solver as V2Solver
+
+solver = V2Solver(DiscretisedSystem(
+    dt=dt,
+    ggl_bundle=GGLBundle(r=r),
+    lagrangian=lagrangian_f,
+    k_potential=k_potential_f,
+))
+
+# solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
 dof = original.degrees_of_freedom
 
-# with jax.profiler.trace("/tmp/jax-trace", create_perfetto_link=True):
-jax_start_time = time.time()
-jax_q, jax_pi = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, iterations=iterations)
-jax_end_time = time.time()
-jax_time = jax_end_time - jax_start_time
-print(f"JAX time: {jax_time}")
+q0 = jnp.array(q0)
+pi0 = jnp.array(pi0)
 
-# with jax.profiler.trace("/tmp/jax-trace", create_perfetto_link=True):
-jax_start_time = time.time()
-jax_q, jax_pi = solver.integrate(jnp.array(q0), jnp.array(pi0), t0, iterations=iterations)
-jax_end_time = time.time()
-jax_time = jax_end_time - jax_start_time
-print(f"JAX time: {jax_time}")
+for i in range(1, 10):
+    jax_start_time = time.time()
+    jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations * i)
+    jax_end_time = time.time()
+    jax_time = jax_end_time - jax_start_time
+    print(f"JAX time: {jax_time}")
 
+jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations)
 
 original_start_time = time.time()
 original_results = original.integrate(
