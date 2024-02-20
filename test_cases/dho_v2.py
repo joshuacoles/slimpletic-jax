@@ -42,14 +42,15 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, SolverScan
+from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, SolverBatchedScan
 
-solver = SolverScan(
+system = DiscretisedSystem(
     ggl_bundle=GGLBundle(r=r),
     dt=dt,
     lagrangian=lagrangian_f,
     k_potential=k_potential_f,
 )
+solver = SolverBatchedScan(system, batch_size=100)
 
 # solver = Solver(r=r, dt=dt, lagrangian=lagrangian_f, k_potential=k_potential_f)
 dof = original.degrees_of_freedom

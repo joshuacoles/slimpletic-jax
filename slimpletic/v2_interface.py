@@ -56,7 +56,6 @@ class DiscretisedSystem:
         self._optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
 
     def lagrangian_d(self, qi_values, t0):
-        print("LAG_D")
         # Eq. 4 (part 2)
         t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
 
@@ -100,7 +99,6 @@ class DiscretisedSystem:
         return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
-        print("COMPUTE_QI_VALUES")
         optimiser_result = self._optimiser.run(
             fill_out_initial(previous_q, r=self.r - 1),
             t_value,
@@ -133,7 +131,6 @@ class DiscretisedSystem:
         :param pi0: The initial value of pi.
         :return: The residue for the optimiser, this will be zero when the solution is found.
         """
-        print("RESIDUE")
         qi_values = jnp.insert(trailing_qi_values, 0, q0, axis=0)
         dld_dqi_values = self.derivatives(qi_values, t)
 
@@ -161,7 +158,6 @@ class DiscretisedSystem:
             previous_state,
             t_value
     ):
-        print("COMPUTE_NEXT")
         (previous_q, previous_pi) = previous_state
         qi_values = self.compute_qi_values(previous_q, previous_pi, t_value)
 
@@ -172,22 +168,12 @@ class DiscretisedSystem:
 
         return next_state, next_state
 
-    @partial(jax.jit, static_argnums=(0,))
-    def _integrate_inner_batch(
-            self,
-            carry: tuple[jnp.ndarray, jnp.ndarray],
-            ts: jnp.ndarray,
-    ):
-        (q0, pi0) = carry
 
-        _, (q, pi) = jax.lax.scan(
-            f=self.compute_next,
-            xs=ts,
-            length=self.batch_size,
-            init=(q0, pi0),
-        )
+class Solver:
+    system: DiscretisedSystem
 
-        return (q[-1], pi[-1]), (q, pi)
+    def __init__(self, system: DiscretisedSystem):
+        self.system = system
 
     def verify_args(self, q0, pi0, t0, iterations, result_orientation):
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
@@ -212,24 +198,9 @@ class DiscretisedSystem:
     ):
         raise NotImplementedError
 
-# class Solver:
-#     system: DiscretisedSystem
-#
-#     def __init__(self, system: DiscretisedSystem):
-#         self.system = system
-#
-#     def integrate(
-#             self,
-#             q0: jnp.ndarray,
-#             pi0: jnp.ndarray,
-#             t0: float,
-#             iterations: int,
-#             result_orientation: str = 'time'
-#     ):
-#         raise NotImplementedError
 
-
-class SolverScan(DiscretisedSystem):
+class SolverScan(Solver):
+    @partial(jax.jit, static_argnums=(0, 4, 5))
     def integrate(
             self,
             q0: jnp.ndarray,
@@ -242,10 +213,10 @@ class SolverScan(DiscretisedSystem):
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.system.dt
 
         _, (q, pi) = jax.lax.scan(
-            f=self.compute_next,
+            f=self.system.compute_next,
             xs=t_samples,
             init=(q0, pi0),
         )
@@ -259,11 +230,35 @@ class SolverScan(DiscretisedSystem):
             return q_with_initial.T, pi_with_initial.T
 
 
-class SolverBatchedScan(DiscretisedSystem):
+class SolverBatchedScan(Solver):
     """
     This is a version of the DiscretisedSystem which uses the batched scan function to integrate the system. This is
     expected to be faster than the standard SolverScan, while losing JIT-ability for the integrate function.
+
+    This is good when integrating the same system to different iteration counts, as the overhead of JIT-compiling the
+    integrate function is amortised over the total number of batches integrated over.
     """
+
+    def __init__(self, system: DiscretisedSystem, batch_size: int):
+        super().__init__(system)
+        self.batch_size = batch_size
+
+    @partial(jax.jit, static_argnums=(0,))
+    def _integrate_inner_batch(
+            self,
+            carry: tuple[jnp.ndarray, jnp.ndarray],
+            ts: jnp.ndarray,
+    ):
+        (q0, pi0) = carry
+
+        _, (q, pi) = jax.lax.scan(
+            f=self.system.compute_next,
+            xs=ts,
+            length=self.batch_size,
+            init=(q0, pi0),
+        )
+
+        return (q[-1], pi[-1]), (q, pi)
 
     def integrate(
             self,
@@ -273,12 +268,14 @@ class SolverBatchedScan(DiscretisedSystem):
             iterations: int,
             result_orientation: str = 'time'
     ):
+        print(f"entrance, {time.time_ns()}")
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
         number_of_batches = np.ceil(iterations / self.batch_size)
-        self.verify_args(q0, pi0, t0, iterations, result_orientation)
-        t_samples_extended = t0 + (1 + jnp.arange(self.batch_size * number_of_batches)) * self.dt
+        t_samples_extended = t0 + (1 + jnp.arange(self.batch_size * number_of_batches)) * self.system.dt
         t_samples_batched = t_samples_extended.reshape(-1, self.batch_size)
+
+        print(f"post_t_setup, {time.time_ns()}")
 
         qs = []
         pis = []
@@ -294,14 +291,23 @@ class SolverBatchedScan(DiscretisedSystem):
             qs.append(q)
             pis.append(pi)
 
+        print(f"post_scan, {time.time_ns()}")
+
         q = jnp.concatenate(qs, axis=0)
         pi = jnp.concatenate(pis, axis=0)
+
+        print(f"post_concat_concat, {time.time_ns()}")
 
         q = q[:iterations]
         pi = pi[:iterations]
 
+        print(f"post_concat_truncate, {time.time_ns()}")
+
         q_with_initial = jnp.insert(q, 0, q0, axis=0)
         pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
+
+        print(f"post_concat_insert, {time.time_ns()}")
+        print(f"post_concat, {time.time_ns()}")
 
         if result_orientation == 'time':
             return q_with_initial, pi_with_initial
@@ -309,7 +315,12 @@ class SolverBatchedScan(DiscretisedSystem):
             return q_with_initial.T, pi_with_initial.T
 
 
-class SolverManual(DiscretisedSystem):
+class SolverManual(Solver):
+    """
+    This is a version of the DiscretisedSystem which uses manual looping to integrate the system. This is expected to be
+    much slower than both the standard SolverScan and the SolverBatchedScan, but is useful for debugging and
+    understanding the system.
+    """
     def integrate(
             self,
             q0: jnp.ndarray,
@@ -322,7 +333,7 @@ class SolverManual(DiscretisedSystem):
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
-        t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
+        t_samples = t0 + (1 + jnp.arange(iterations)) * self.system.dt
 
         qs = [q0]
         pis = [pi0]
@@ -330,7 +341,7 @@ class SolverManual(DiscretisedSystem):
         carry = (q0, pi0)
 
         for t in t_samples:
-            carry, (q_next, pi_next) = self.compute_next(carry, t)
+            carry, (q_next, pi_next) = self.system.compute_next(carry, t)
             qs.append(q_next)
             pis.append(pi_next)
 
