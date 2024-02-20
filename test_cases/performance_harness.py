@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 
@@ -8,6 +9,8 @@ import jax.numpy as jnp
 
 from slimpletic import Solver
 from original import GalerkinGaussLobatto
+
+# logging.basicConfig(level=logging.DEBUG)
 
 # System parameters, used in both methods
 m = 1.0
@@ -61,33 +64,9 @@ pi0 = jnp.array(pi0)
 
 
 for i in range(1, 10):
-    jax_start_time = time.time()
+    jax_start_time = time.time_ns()
+    print(f"JAX Handing off {iterations * i} iterations {time.time_ns()}")
     jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations * i + random.randint(1, 10))
-    jax_end_time = time.time()
+    jax_end_time = time.time_ns()
     jax_time = jax_end_time - jax_start_time
-    print(f"JAX time: {jax_time}")
-#
-# for i in range(1, 10):
-#     jax_start_time = time.time()
-#     jax_q, jax_pi = solver.integrate(q0 * i, pi0, t0, iterations=200)
-#     jax_end_time = time.time()
-#     jax_time = jax_end_time - jax_start_time
-#     print(f"JAX time: {jax_time}")
-
-jax_q, jax_pi = solver.integrate(q0, pi0, t0, iterations=iterations)
-
-original_start_time = time.time()
-original_results = original.integrate(
-    q0=np.array(q0),
-    pi0=np.array(pi0),
-    t=t,
-    dt=dt,
-)
-
-original_end_time = time.time()
-original_time = original_end_time - original_start_time
-print(f"Original time: {original_time}")
-
-plt.plot(t, jax_q)
-plt.plot(t, original_results[0], linestyle='dashed')
-plt.show()
+    print(f"JAX time: {jax_time / 10e9}")

@@ -1,10 +1,13 @@
+import time
 from functools import partial
 from typing import Union, Callable
 
 import jax.lax
 import jax.numpy
 import jaxopt
+import numpy as np
 from jax import numpy as jnp
+from timeit import Timer
 
 from slimpletic.ggl import ggl, dereduce
 from slimpletic.helpers import fill_out_initial
@@ -35,23 +38,21 @@ class DiscretisedSystem:
     lagrangian: Callable
     k_potential: Callable
 
+    # The number of iterations to batch together when integrating the system. If False, no batching is performed.
+    batch_size: Union[int, None] = 100
+
     def __init__(
             self,
             ggl_bundle: GGLBundle,
             dt: float,
             lagrangian: Union[None, Callable] = None,
             k_potential: Union[None, Callable] = None,
-            jit: bool = True
     ):
         self.r = ggl_bundle.r
         self.xs, self.ws, self.dij = dereduce((ggl_bundle.xs, ggl_bundle.ws, ggl_bundle.dij), dt)
         self.dt = dt
         self.lagrangian = lagrangian or zero_function
         self.k_potential = k_potential or zero_function
-
-        if jit:
-            self.compute_next = jax.jit(self.compute_next)
-
         self._optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
 
     def lagrangian_d(self, qi_values, t0):
@@ -117,6 +118,7 @@ class DiscretisedSystem:
                                                                        t_value)
         return dld_dqi_values[-1] + dkd_dqi_minus_values[-1]
 
+    @partial(jax.jit, static_argnums=(0,))
     def residue(self, trailing_qi_values, t, q0, pi0):
         """
         Compute the residue for the optimiser based on Equations 13(a) and 13(c) in the paper.
@@ -153,6 +155,7 @@ class DiscretisedSystem:
             eq13a_residue
         )
 
+    @partial(jax.jit, static_argnums=(0,))
     def compute_next(
             self,
             previous_state,
@@ -169,7 +172,25 @@ class DiscretisedSystem:
 
         return next_state, next_state
 
-    @partial(jax.jit, static_argnums=(0, 4, 5))
+    @partial(jax.jit, static_argnums=(0,))
+    def _integrate_inner_batch(
+            self,
+            carry: tuple[jnp.ndarray, jnp.ndarray],
+            ts: jnp.ndarray,
+    ):
+        jax.debug.print("JAX INTEGRATE_INNER_BATCH")
+        print(f"INTEGRATE_INNER_BATCH {self.batch_size, carry, ts}")
+        (q0, pi0) = carry
+
+        _, (q, pi) = jax.lax.scan(
+            f=self.compute_next,
+            xs=ts,
+            length=self.batch_size,
+            init=(q0, pi0),
+        )
+
+        return (q[-1], pi[-1]), (q, pi)
+
     def integrate(
             self,
             q0: jnp.ndarray,
@@ -189,7 +210,9 @@ class DiscretisedSystem:
         along the time axis, or if array[i] is the value of the coordinates at the i-th time step.
         :return: The values of q and pi along the evolution of the system, oriented as specified by `result_orientation`.
         """
-        print("INTEGRATE")
+        print(f"INTEGRATE {time.time_ns()}")
+
+        timer_1 = time.time_ns()
 
         if not (isinstance(q0, jnp.ndarray) and isinstance(pi0, jnp.ndarray)):
             raise ValueError("q0 and pi0 must be jax numpy arrays.")
@@ -200,19 +223,70 @@ class DiscretisedSystem:
         if result_orientation not in ['time', 'coordinate']:
             raise ValueError("orientation must be either 'time' or 'coordinate'.")
 
+        print("Timer 1: ", (time.time_ns() - timer_1) / 10e9)
+        timer_2 = time.time_ns()
+
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
         t_samples = t0 + (1 + jnp.arange(iterations)) * self.dt
 
-        _, (q, pi) = jax.lax.scan(
-            f=self.compute_next,
-            xs=t_samples,
-            init=(q0, pi0),
-        )
+        print("Timer 2: ", (time.time_ns() - timer_2) / 10e9)
 
+        if self.batch_size is not None:
+            timer_3 = time.time_ns()
+            # We use numpy to compute the number of batches, as this is static and should NOT be considered during JIT.
+            number_of_batches = np.ceil(iterations / self.batch_size)
+            print("Number of batches: ", number_of_batches)
+            t_samples_extended = t0 + (1 + jnp.arange(self.batch_size * number_of_batches)) * self.dt
+            t_samples_extended = t_samples_extended.reshape(-1, self.batch_size)
+            print("Timer 3: ", (time.time_ns() - timer_3) / 10e9)
+            timer_4 = time.time_ns()
+
+            qs = []
+            pis=[]
+            q_previous = q0
+            pi_previous = pi0
+
+            for i in range(int(number_of_batches)):
+                (q_previous, pi_previous), (q, pi) = self._integrate_inner_batch(
+                    carry=(q_previous, pi_previous),
+                    ts=t_samples_extended[i]
+                )
+
+                qs.append(q)
+                pis.append(pi)
+
+            q = jnp.concatenate(qs, axis=0)
+            pi = jnp.concatenate(pis, axis=0)
+
+            # _, (q, pi) = jax.lax.scan(
+            #     f=self._integrate_inner_batch,
+            #     xs=t_samples_extended,
+            #     length=number_of_batches,
+            #     init=(q0, pi0),
+            # )
+
+            print("Timer 4: ", (time.time_ns() - timer_4) / 10e9)
+            timer_5 = time.time_ns()
+
+            q = jnp.concatenate(q, axis=0)
+            pi = jnp.concatenate(pi, axis=0)
+
+            q = q[:iterations]
+            pi = pi[:iterations]
+            print("Timer 5: ", (time.time_ns() - timer_5) / 10e9)
+        else:
+            _, (q, pi) = jax.lax.scan(
+                f=self.compute_next,
+                xs=t_samples,
+                init=(q0, pi0),
+            )
+
+        timer_6 = time.time_ns()
         # We need to add the initial values back into the results.
         q_with_initial = jnp.insert(q, 0, q0, axis=0)
         pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
+        print("Timer 6: ", (time.time_ns() - timer_6) / 10e9)
 
         if result_orientation == 'time':
             return q_with_initial, pi_with_initial
