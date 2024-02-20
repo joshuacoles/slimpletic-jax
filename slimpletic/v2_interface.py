@@ -303,10 +303,10 @@ class SolverBatchedScan(Solver):
 
         print(f"post_concat_truncate, {time.time_ns()}")
 
-        q_with_initial = jnp.insert(q, 0, q0, axis=0)
-        pi_with_initial = jnp.insert(pi, 0, pi0, axis=0)
+        q_with_initial = jnp.append(jnp.array([q0]), q, axis=0)
+        pi_with_initial = jnp.append(jnp.array([pi0]), pi, axis=0)
 
-        print(f"post_concat_insert, {time.time_ns()}")
+        print(f"post_concat_append, {time.time_ns()}")
         print(f"post_concat, {time.time_ns()}")
 
         if result_orientation == 'time':
@@ -321,6 +321,7 @@ class SolverManual(Solver):
     much slower than both the standard SolverScan and the SolverBatchedScan, but is useful for debugging and
     understanding the system.
     """
+
     def integrate(
             self,
             q0: jnp.ndarray,
