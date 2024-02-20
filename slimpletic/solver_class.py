@@ -11,9 +11,15 @@ from slimpletic.ggl import ggl, dereduce
 from slimpletic.helpers import fill_out_initial
 
 
+# Helper for default values of lagrangian and k_potential
+def zero_function(*args):
+    return 0
+
+
 class Solver:
     r: int
     dt: float
+
     optimiser: jaxopt.GaussNewton
     lagrangian: callable
     derivatives: callable
@@ -30,10 +36,13 @@ class Solver:
 
     def __setattr__(self, key, value):
         """
-        When running under JAX JIT, our methods will not be recomputed if the object is mutated. Hence to avoid bugs we
+        When running under JAX JIT, our methods will not be recomputed if the object is mutated. Hence, to avoid bugs we
         seal the object after creation.
+
+        With the new ability to change the lagrangian and k_potential, we need to unseal the object when we change these
+        parameters. This is done by checking if the key is '_sealed', and if it is we allow the change to go through.
         """
-        if self._sealed:
+        if self._sealed and key != '_sealed':
             raise FrozenError("You cannot edit the solver after it has been created. Use create_similar to create a "
                               "new instance with the same parameters.")
         else:
@@ -53,21 +62,53 @@ class Solver:
             k_potential=kwargs.get('k_potential') or self.k_potential,
         )
 
-    def __init__(self, r: int, dt: float, lagrangian: Callable[[Any, Any, Any], Any],
-                 k_potential: Union[None, Callable[[Any, Any, Any, Any, Any], Any]]):
+    def __init__(
+            self,
+            r: int,
+            dt: float,
+            lagrangian: Union[None, Callable[[Any, Any, Any], Any]] = None,
+            k_potential: Union[None, Callable[[Any, Any, Any, Any, Any], Any]] = None,
+            jit_residue: bool = True
+    ):
         self.r = r
         self.xs, self.ws, self.dij = dereduce(ggl(r), dt)
         self.dt = dt
 
-        self.lagrangian = lagrangian
-        self.k_potential = k_potential or (lambda *args: 0)
+        # self.lagrangian = lagrangian or zero_function
+        # self.k_potential = k_potential or zero_function
 
-        # Note these arg-numbers are on the *bound* methods and hence skips the self argument
-        self.k_derivatives = jax.grad(self.k_potential_d, argnums=(0, 1))
-        self.derivatives = jax.grad(self.lagrangian_d, argnums=0)
+        self.set_lagrangian(
+            lagrangian=lagrangian,
+            k_potential=k_potential,
+            jit_residue=jit_residue
+        )
 
-        self.optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
         self._sealed = True
+
+    def set_lagrangian(
+            self,
+            lagrangian: Union[None, Callable[[Any, Any, Any], Any]] = None,
+            k_potential: Union[None, Callable[[Any, Any, Any, Any, Any], Any]] = None,
+            jit_residue: bool = True
+    ):
+        self._sealed = False
+        self.lagrangian = lagrangian or zero_function
+        self.k_potential = k_potential or zero_function
+
+        if jit_residue:
+            self._optimiser = jaxopt.GaussNewton(residual_fun=jax.jit(self.residue))
+        else:
+            self._optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
+
+        self._sealed = True
+
+    def derivatives(self, qi_values, t0):
+        # Note these arg-numbers are on the *bound* methods and hence skips the self argument
+        return jax.grad(self.lagrangian_d, argnums=0)(qi_values, t0)
+
+    def k_derivatives(self, qi_plus_values, qi_minus_values, t0):
+        # Note these arg-numbers are on the *bound* methods and hence skips the self argument
+        return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0)
 
     def lagrangian_d(self, qi_values, t0):
         # Eq. 4 (part 2)
@@ -99,7 +140,7 @@ class Solver:
         return jnp.dot(self.ws, fn_i)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
-        optimiser_result = self.optimiser.run(
+        optimiser_result = self._optimiser.run(
             fill_out_initial(previous_q, r=self.r - 1),
             t_value,
             previous_q,
@@ -166,7 +207,8 @@ class Solver:
         return next_state, next_state
 
     @partial(jax.jit, static_argnums=(0, 4))
-    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time'):
+    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int,
+                  result_orientation: str = 'time'):
         """
         Integrate the system using the slimpletic method.
 
