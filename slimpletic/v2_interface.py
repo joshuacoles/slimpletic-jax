@@ -9,8 +9,7 @@ import numpy as np
 from jax import numpy as jnp
 
 from slimpletic.ggl import ggl, dereduce
-from slimpletic.helpers import fill_out_initial
-from slimpletic.solver_class import zero_function
+from slimpletic.helpers import fill_out_initial, zero_function
 
 
 class GGLBundle:

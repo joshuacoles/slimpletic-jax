@@ -1,6 +1,11 @@
 from jax import numpy as jnp
 
 
+# Helper for default values of lagrangian and k_potential
+def zero_function(*args):
+    return 0
+
+
 def floatify1(xs):
     return jnp.array([float(x) for x in xs])
 

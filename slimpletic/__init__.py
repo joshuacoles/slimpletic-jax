@@ -1,8 +1,12 @@
 from .helpers import jax_enable_x64
-from .solver_class import Solver
+from .v2_interface import GGLBundle, DiscretisedSystem, SolverBatchedScan, SolverManual, SolverScan
 
 jax_enable_x64()
 
 __all__ = [
-    'Solver'
+    'GGLBundle',
+    'DiscretisedSystem',
+    'SolverBatchedScan',
+    'SolverManual',
+    'SolverScan',
 ]
