@@ -22,6 +22,7 @@ These fit into 3 different categories:
     - We currently have the live values within the lambda stored in the static and this is not working
     - Hence, we need to pass them along
       - I probably want and need to register things as Pytrees but for now we can ignore shit
+      - Either self needs to be open or the data needs to be passed outside of self
 
 1. Method Parameters: `(r,)`
    - There is nothing we can do if these change as the

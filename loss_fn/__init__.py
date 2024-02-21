@@ -42,23 +42,37 @@ embedding = jnp.array(np.random.rand(9)) * 10
 ggl_bundle = GGLBundle(r=0)
 
 
+def lagrangian(q, v, t, system_params):
+    return compute_action(jnp.concat([q, v], axis=0), system_params)
+
+test_system = DiscretisedSystem(
+    dt=0.1,
+    ggl_bundle=ggl_bundle,
+    lagrangian=lagrangian,
+    k_potential=None,
+    pass_system_params=True
+)
+
+test_system_solver = SolverScan(test_system)
+
 def loss_fn(embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarray):
     assert target_q.size == target_pi.size
 
-    system = DiscretisedSystem(
-        dt=0.1,
-        ggl_bundle=ggl_bundle,
-        lagrangian=jit(lambda q, v, t: compute_action(jnp.concat([q, v], axis=0), embedding)),
-        k_potential=None
-    )
+    # system = DiscretisedSystem(
+    #     dt=0.1,
+    #     ggl_bundle=ggl_bundle,
+    #     lagrangian=jit(lambda q, v, t: compute_action(jnp.concat([q, v], axis=0), embedding)),
+    #     k_potential=None
+    # )
+    #
+    # system_solver = SolverScan(system)
 
-    system_solver = SolverScan(system)
-
-    q, pi = system_solver.integrate(
+    q, pi = test_system_solver.integrate(
         q0=jnp.array([1.0, 0.0, 0.0]),
         pi0=jnp.array([0.0, 0.0, 0.0]),
         t0=0,
-        iterations=10
+        iterations=10,
+        system_params=embedding
     )
 
     return jnp.sqrt(jnp.mean(jnp.abs(q - target_q) ** 2) + jnp.mean(jnp.abs(pi - target_pi) ** 2))
@@ -68,7 +82,7 @@ expected_system = DiscretisedSystem(
     dt=0.1,
     ggl_bundle=ggl_bundle,
     lagrangian=lambda q, v, t: jnp.dot(q, q) + jnp.dot(v, v),
-    k_potential=None
+    k_potential=None,
 )
 
 expected_system_solver = SolverScan(expected_system)
@@ -77,7 +91,8 @@ exptected_q, expected_pi = expected_system_solver.integrate(
     q0=jnp.array([1.0, 0.0, 0.0]),
     pi0=jnp.array([0.0, 0.0, 0.0]),
     t0=0.0,
-    iterations=10
+    iterations=10,
+    system_params=None
 )
 
 print(grad(loss_fn, argnums=(0,))(
