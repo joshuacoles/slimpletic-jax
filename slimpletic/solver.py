@@ -8,9 +8,8 @@ import jaxopt
 import numpy as np
 from jax import numpy as jnp
 
-from slimpletic import GGLBundle
-from slimpletic.ggl import dereduce
-from slimpletic.helpers import fill_out_initial, zero_function
+from .ggl import GGLBundle, dereduce
+from .helpers import fill_out_initial, zero_function
 
 class DiscretisedSystem:
     # This is Pytree-able
@@ -23,8 +22,12 @@ class DiscretisedSystem:
     dij: jnp.ndarray
 
     # Okay these can't be put into a Pytree
-    lagrangian: Callable
-    k_potential: Callable
+    _lagrangian: Callable
+    _k_potential: Callable
+
+    # This is necessarily static
+    pass_additional_data: bool
+    _optimiser: jaxopt.GaussNewton
 
     def __init__(
             self,
@@ -32,40 +35,51 @@ class DiscretisedSystem:
             dt: float,
             lagrangian: Union[None, Callable] = None,
             k_potential: Union[None, Callable] = None,
-            pass_system_params: bool = False
+            pass_additional_data: bool = False
     ):
         self.r = ggl_bundle.r
         self.xs, self.ws, self.dij = dereduce((ggl_bundle.xs, ggl_bundle.ws, ggl_bundle.dij), dt)
         self.dt = dt
-        self.lagrangian = lagrangian or zero_function
-        self.k_potential = k_potential or zero_function
-        self.pass_system_params = pass_system_params
+        self._lagrangian = lagrangian or zero_function
+        self._k_potential = k_potential or zero_function
+        self.pass_additional_data = pass_additional_data
         self._optimiser = jaxopt.GaussNewton(residual_fun=self.residue)
 
-    def lagrangian_d(self, qi_values, t0, system_params=None):
+    def lagrangian(self, q, qdot, t, additional_data):
+        if self.pass_additional_data:
+            return self._lagrangian(q, qdot, t, additional_data)
+        else:
+            return self._lagrangian(q, qdot, t)
+
+    def k_potential(self, q_plus, q_minus, qdot_plus, qdot_minus, t, additional_data):
+        if self.pass_additional_data:
+            return self._k_potential(q_plus, q_minus, qdot_plus, qdot_minus, t, additional_data)
+        else:
+            return self._k_potential(q_plus, q_minus, qdot_plus, qdot_minus, t)
+
+    @partial(jax.jit, static_argnums=(0,))
+    def lagrangian_d(self, qi_values, t0, additional_data=None):
         # Eq. 4 (part 2)
         t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
 
         # Eq. 6. Given the values of qi we can compute the values of qidot at the quadrature points.
         qidot_vec = jax.numpy.matmul(self.dij, qi_values)
 
-        if self.pass_system_params:
-            # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
-            fn_i = jax.vmap(
-                self.lagrangian,
-                in_axes=(0, 0, 0, None)
-            )(qi_values, qidot_vec, t_quadrature_values, system_params)
-        else:
-            # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
-            fn_i = jax.vmap(self.lagrangian)(qi_values, qidot_vec, t_quadrature_values)
+        # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
+        fn_i = jax.vmap(
+            self.lagrangian,
+            in_axes=(0, 0, 0, None)
+        )(qi_values, qidot_vec, t_quadrature_values, additional_data)
+
         return jnp.dot(self.ws, fn_i)
 
+    @partial(jax.jit, static_argnums=(0,))
     def k_potential_d(
             self,
             qi_plus_values,
             qi_minus_values,
             t0,
-            system_params=None
+            additional_data=None
     ):
         # Eq. 4 (part 2)
         t_quadrature_values = t0 + (1 + self.xs) * self.dt / 2
@@ -74,41 +88,31 @@ class DiscretisedSystem:
         qi_plus_dot_vec = jax.numpy.matmul(self.dij, qi_plus_values)
         qi_minus_dot_vec = jax.numpy.matmul(self.dij, qi_minus_values)
 
-        if self.pass_system_params:
-            # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
-            fn_i = jax.vmap(
-                self.k_potential,
-                in_axes=(0, 0, 0, 0, 0, None)
-            )(
-                qi_plus_values,
-                qi_minus_values,
-                qi_plus_dot_vec,
-                qi_minus_dot_vec,
-                t_quadrature_values,
-                system_params
-            )
-        else:
-            # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
-            fn_i = jax.vmap(self.k_potential)(
-                qi_plus_values,
-                qi_minus_values,
-                qi_plus_dot_vec,
-                qi_minus_dot_vec,
-                t_quadrature_values
-            )
+        # Eq. 7, first evaluate the function at the quadrature points, then compute the weighted sum.
+        fn_i = jax.vmap(
+            self.k_potential,
+            in_axes=(0, 0, 0, 0, 0, None)
+        )(
+            qi_plus_values,
+            qi_minus_values,
+            qi_plus_dot_vec,
+            qi_minus_dot_vec,
+            t_quadrature_values,
+            additional_data
+        )
 
         return jnp.dot(self.ws, fn_i)
 
-    def derivatives(self, qi_values, t0, system_params=None):
+    def derivatives(self, qi_values, t0, additional_data=None):
         # Note these arg-numbers are on the *bound* methods and hence skips the self argument
-        return jax.grad(self.lagrangian_d, argnums=0)(qi_values, t0, system_params=system_params)
+        return jax.grad(self.lagrangian_d, argnums=0)(qi_values, t0, additional_data=additional_data)
 
-    def k_derivatives(self, qi_plus_values, qi_minus_values, t0, system_params=None):
+    def k_derivatives(self, qi_plus_values, qi_minus_values, t0, additional_data=None):
         # Note these arg-numbers are on the *bound* methods and hence skips the self argument
         return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0,
-                                                            system_params=system_params)
+                                                            additional_data=additional_data)
 
-    def compute_qi_values(self, previous_q, previous_pi, t_value, system_params=None):
+    def compute_qi_values(self, previous_q, previous_pi, t_value, additional_data=None):
         print(previous_q, previous_q, t_value)
 
         optimiser_result = self._optimiser.run(
@@ -116,21 +120,21 @@ class DiscretisedSystem:
             t_value,
             previous_q,
             previous_pi,
-            system_params
+            additional_data
         )
 
         return jnp.insert(optimiser_result.params, 0, previous_q, axis=0)
 
-    def compute_pi_next(self, qi_values, t_value, system_params=None):
+    def compute_pi_next(self, qi_values, t_value, additional_data=None):
         # Eq 13(b)
-        dld_dqi_values = self.derivatives(qi_values, t_value, system_params=system_params)
+        dld_dqi_values = self.derivatives(qi_values, t_value, additional_data=additional_data)
         dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(qi_values,
                                                                        jnp.zeros_like(qi_values, dtype=float),
-                                                                       t_value, system_params=system_params)
+                                                                       t_value, additional_data=additional_data)
         return dld_dqi_values[-1] + dkd_dqi_minus_values[-1]
 
     @partial(jax.jit, static_argnums=(0,))
-    def residue(self, trailing_qi_values, t, q0, pi0, system_params=None):
+    def residue(self, trailing_qi_values, t, q0, pi0, additional_data=None):
         """
         Compute the residue for the optimiser based on Equations 13(a) and 13(c) in the paper.
 
@@ -145,14 +149,14 @@ class DiscretisedSystem:
         :return: The residue for the optimiser, this will be zero when the solution is found.
         """
         qi_values = jnp.insert(trailing_qi_values, 0, q0, axis=0)
-        dld_dqi_values = self.derivatives(qi_values, t, system_params=system_params)
+        dld_dqi_values = self.derivatives(qi_values, t, additional_data=additional_data)
 
         # Evaluate in the physical limit
         dkd_dqi_plus_values, dkd_dqi_minus_values = self.k_derivatives(
             qi_values,
             jnp.zeros_like(qi_values, dtype=float),
             t,
-            system_params=system_params
+            additional_data=additional_data
         )
 
         # Eq 13(a), we set the derivative wrt to the initial point to negative of pi0
@@ -171,14 +175,14 @@ class DiscretisedSystem:
             self,
             previous_state,
             t_value,
-            system_params: Any = None
+            additional_data: Any = None
     ):
         (previous_q, previous_pi) = previous_state
-        qi_values = self.compute_qi_values(previous_q, previous_pi, t_value, system_params=system_params)
+        qi_values = self.compute_qi_values(previous_q, previous_pi, t_value, additional_data)
 
         # q_{n, r + 1} = q_{n + 1, 0}
         q_next = qi_values[-1]
-        pi_next = self.compute_pi_next(qi_values, t_value, system_params=system_params)
+        pi_next = self.compute_pi_next(qi_values, t_value, additional_data)
         next_state = (q_next, pi_next)
 
         return next_state, next_state
@@ -210,7 +214,7 @@ class Solver:
             t0: float,
             iterations: int,
             result_orientation: str = 'time',
-            system_params: Any = None
+            additional_data: Any = None
     ):
         raise NotImplementedError
 
@@ -218,7 +222,7 @@ class Solver:
 class SolverScan(Solver):
     @partial(jax.jit, static_argnums=(0, 4, 5))
     def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time',
-                  system_params=None):
+                  additional_data=None):
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
@@ -227,7 +231,7 @@ class SolverScan(Solver):
         t_samples = t0 + (1 + np.arange(iterations)) * self.system.dt
 
         _, (q, pi) = jax.lax.scan(
-            f=lambda *args: self.system.compute_next(*args, system_params=system_params),
+            f=lambda *args: self.system.compute_next(*args, additional_data=additional_data),
             xs=t_samples,
             init=(q0, pi0),
         )
@@ -259,12 +263,12 @@ class SolverBatchedScan(Solver):
             self,
             carry: tuple[jnp.ndarray, jnp.ndarray],
             ts: jnp.ndarray,
-            system_params=None
+            additional_data=None
     ):
         (q0, pi0) = carry
 
         _, (q, pi) = jax.lax.scan(
-            f=lambda *args: self.system.compute_next(*args, system_params=system_params),
+            f=lambda *args: self.system.compute_next(*args, additional_data=additional_data),
             xs=ts,
             length=self.batch_size,
             init=(q0, pi0),
@@ -273,7 +277,7 @@ class SolverBatchedScan(Solver):
         return (q[-1], pi[-1]), (q, pi)
 
     def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time',
-                  system_params=None):
+                  additional_data=None):
         print(f"entrance, {time.time_ns()}")
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
@@ -296,7 +300,7 @@ class SolverBatchedScan(Solver):
             (q_previous, pi_previous), (q, pi) = self._integrate_inner_batch(
                 carry=(q_previous, pi_previous),
                 ts=t_samples_batched[i],
-                system_params=system_params
+                additional_data=additional_data
             )
 
             qs.append(q)
@@ -341,7 +345,7 @@ class SolverManual(Solver):
             t0: float,
             iterations: int,
             result_orientation: str = 'time',
-            system_params=None
+            additional_data=None
     ):
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
@@ -355,7 +359,7 @@ class SolverManual(Solver):
         carry = (q0, pi0)
 
         for t in t_samples:
-            carry, (q_next, pi_next) = self.system.compute_next(carry, t, system_params=system_params)
+            carry, (q_next, pi_next) = self.system.compute_next(carry, t, additional_data=additional_data)
             qs.append(q_next)
             pis.append(pi_next)
 
