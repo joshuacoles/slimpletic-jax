@@ -26,14 +26,24 @@ class GGLBundle:
         self.xs, self.ws, self.dij = ggl(r)
 
 
+jax.tree_util.register_pytree_node(
+    GGLBundle,
+    lambda bundle: ((bundle.r, bundle.xs, bundle.ws, bundle.dij), None),
+    lambda data, _: GGLBundle(*data)
+)
+
+
 class DiscretisedSystem:
+    # This is Pytree-able
     r: int
     dt: float
 
+    # This is Pytree-able
     xs: jnp.ndarray
     ws: jnp.ndarray
     dij: jnp.ndarray
 
+    # Okay these can't be put into a Pytree
     lagrangian: Callable
     k_potential: Callable
 
@@ -116,7 +126,8 @@ class DiscretisedSystem:
 
     def k_derivatives(self, qi_plus_values, qi_minus_values, t0, system_params=None):
         # Note these arg-numbers are on the *bound* methods and hence skips the self argument
-        return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0, system_params=system_params)
+        return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0,
+                                                            system_params=system_params)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value, system_params=None):
         print(previous_q, previous_q, t_value)
@@ -219,22 +230,16 @@ class Solver:
             pi0: jnp.ndarray,
             t0: float,
             iterations: int,
-            result_orientation: str = 'time'
+            result_orientation: str = 'time',
+            system_params: Any = None
     ):
         raise NotImplementedError
 
 
 class SolverScan(Solver):
     @partial(jax.jit, static_argnums=(0, 4, 5))
-    def integrate(
-            self,
-            q0: jnp.ndarray,
-            pi0: jnp.ndarray,
-            t0: float,
-            iterations: int,
-            result_orientation: str = 'time',
-            system_params: Any = None
-    ):
+    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time',
+                  system_params=None):
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
@@ -275,11 +280,12 @@ class SolverBatchedScan(Solver):
             self,
             carry: tuple[jnp.ndarray, jnp.ndarray],
             ts: jnp.ndarray,
+            system_params=None
     ):
         (q0, pi0) = carry
 
         _, (q, pi) = jax.lax.scan(
-            f=self.system.compute_next,
+            f=lambda *args: self.system.compute_next(*args, system_params=system_params),
             xs=ts,
             length=self.batch_size,
             init=(q0, pi0),
@@ -287,14 +293,8 @@ class SolverBatchedScan(Solver):
 
         return (q[-1], pi[-1]), (q, pi)
 
-    def integrate(
-            self,
-            q0: jnp.ndarray,
-            pi0: jnp.ndarray,
-            t0: float,
-            iterations: int,
-            result_orientation: str = 'time'
-    ):
+    def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time',
+                  system_params=None):
         print(f"entrance, {time.time_ns()}")
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
@@ -316,7 +316,8 @@ class SolverBatchedScan(Solver):
         for i in range(int(number_of_batches)):
             (q_previous, pi_previous), (q, pi) = self._integrate_inner_batch(
                 carry=(q_previous, pi_previous),
-                ts=t_samples_batched[i]
+                ts=t_samples_batched[i],
+                system_params=system_params
             )
 
             qs.append(q)
@@ -360,7 +361,8 @@ class SolverManual(Solver):
             pi0: jnp.ndarray,
             t0: float,
             iterations: int,
-            result_orientation: str = 'time'
+            result_orientation: str = 'time',
+            system_params=None
     ):
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
@@ -374,7 +376,7 @@ class SolverManual(Solver):
         carry = (q0, pi0)
 
         for t in t_samples:
-            carry, (q_next, pi_next) = self.system.compute_next(carry, t)
+            carry, (q_next, pi_next) = self.system.compute_next(carry, t, system_params=system_params)
             qs.append(q_next)
             pis.append(pi_next)
 

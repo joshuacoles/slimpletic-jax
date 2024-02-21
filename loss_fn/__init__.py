@@ -67,13 +67,8 @@ def loss_fn(embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarra
     #
     # system_solver = SolverScan(system)
 
-    q, pi = test_system_solver.integrate(
-        q0=jnp.array([1.0, 0.0, 0.0]),
-        pi0=jnp.array([0.0, 0.0, 0.0]),
-        t0=0,
-        iterations=10,
-        system_params=embedding
-    )
+    q, pi = test_system_solver.integrate(q0=jnp.array([1.0, 0.0, 0.0]), pi0=jnp.array([0.0, 0.0, 0.0]), t0=0,
+                                         iterations=10)
 
     return jnp.sqrt(jnp.mean(jnp.abs(q - target_q) ** 2) + jnp.mean(jnp.abs(pi - target_pi) ** 2))
 
@@ -87,13 +82,8 @@ expected_system = DiscretisedSystem(
 
 expected_system_solver = SolverScan(expected_system)
 
-exptected_q, expected_pi = expected_system_solver.integrate(
-    q0=jnp.array([1.0, 0.0, 0.0]),
-    pi0=jnp.array([0.0, 0.0, 0.0]),
-    t0=0.0,
-    iterations=10,
-    system_params=None
-)
+exptected_q, expected_pi = expected_system_solver.integrate(q0=jnp.array([1.0, 0.0, 0.0]),
+                                                            pi0=jnp.array([0.0, 0.0, 0.0]), t0=0.0, iterations=10)
 
 print(grad(loss_fn, argnums=(0,))(
     jnp.array(np.random.rand(9)),
