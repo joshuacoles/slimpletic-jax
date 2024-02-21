@@ -7,7 +7,6 @@ import jax.numpy
 import jaxopt
 import numpy as np
 from jax import numpy as jnp
-from timeit import Timer
 
 from slimpletic.ggl import ggl, dereduce
 from slimpletic.helpers import fill_out_initial
@@ -37,9 +36,6 @@ class DiscretisedSystem:
 
     lagrangian: Callable
     k_potential: Callable
-
-    # The number of iterations to batch together when integrating the system. If False, no batching is performed.
-    batch_size: Union[int, None] = 100
 
     def __init__(
             self,
@@ -99,6 +95,8 @@ class DiscretisedSystem:
         return jax.grad(self.k_potential_d, argnums=(0, 1))(qi_plus_values, qi_minus_values, t0)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value):
+        print(previous_q, previous_q, t_value)
+
         optimiser_result = self._optimiser.run(
             fill_out_initial(previous_q, r=self.r - 1),
             t_value,
