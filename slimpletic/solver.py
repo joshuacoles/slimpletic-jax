@@ -8,29 +8,9 @@ import jaxopt
 import numpy as np
 from jax import numpy as jnp
 
-from slimpletic.ggl import ggl, dereduce
+from slimpletic import GGLBundle
+from slimpletic.ggl import dereduce
 from slimpletic.helpers import fill_out_initial, zero_function
-
-
-class GGLBundle:
-    """
-    A bundle of the values of the GGL quadrature method, which are used to compute the values of the quadrature points.
-    
-    The computation of these is kept separate from the DiscretisedSystem class as they are not expected to change, and
-    are less amenable to JIT compilation and gradient computation.
-    """
-
-    def __init__(self, r: int):
-        self.r = r
-        self.xs, self.ws, self.dij = ggl(r)
-
-
-jax.tree_util.register_pytree_node(
-    GGLBundle,
-    lambda bundle: ((bundle.r, bundle.xs, bundle.ws, bundle.dij), None),
-    lambda data, _: GGLBundle(*data)
-)
-
 
 class DiscretisedSystem:
     # This is Pytree-able

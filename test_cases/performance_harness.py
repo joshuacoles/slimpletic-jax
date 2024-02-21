@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import jax.numpy as jnp
 
-from slimpletic import Solver
+from slimpletic import Solver, GGLBundle
 from original import GalerkinGaussLobatto
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -47,7 +47,7 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-from slimpletic.v2_interface import DiscretisedSystem, GGLBundle, SolverBatchedScan, SolverScan
+from slimpletic.solver import DiscretisedSystem, SolverBatchedScan, SolverScan
 
 system = DiscretisedSystem(
     ggl_bundle=GGLBundle(r=r),

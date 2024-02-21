@@ -4,7 +4,7 @@ import jax.lax
 import jax.numpy as jnp
 import numpy as np
 from jax import jit, grad
-from slimpletic.v2_interface import DiscretisedSystem, SolverScan, GGLBundle
+from slimpletic import DiscretisedSystem, SolverScan, GGLBundle
 
 
 @jit
