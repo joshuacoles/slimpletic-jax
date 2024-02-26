@@ -42,7 +42,7 @@ def k_potential_f(qp, qm, vp, vm, t):
     return -ll * jnp.dot(vp, qm)
 
 
-from slimpletic.solver import DiscretisedSystem, SolverBatchedScan, SolverScan
+from slimpletic.solver import DiscretisedSystem, SolverBatchedScan
 from slimpletic import GGLBundle
 
 system = DiscretisedSystem(

@@ -113,8 +113,6 @@ class DiscretisedSystem:
                                                             additional_data=additional_data)
 
     def compute_qi_values(self, previous_q, previous_pi, t_value, additional_data=None):
-        print(previous_q, previous_q, t_value)
-
         optimiser_result = self._optimiser.run(
             fill_out_initial(previous_q, r=self.r - 1),
             t_value,
