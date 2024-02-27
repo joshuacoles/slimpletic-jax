@@ -4,18 +4,18 @@ from MVP_Data_Creation import slimplecticSoln
 import matplotlib.pyplot as plt
 
 # Training Variables: Can be changed
-EPOCHS = 20000
+EPOCHS = 4000
 TRAINING_TIMESTEPS = 10
-TRAINING_DATASIZE = 256
-XName = "xData_1.npy"
-YName = "yData_1.npy"
+TRAINING_DATASIZE = 20480
+XName = "xData_lowNoise.npy"
+YName = "yData_lowNoise.npy"
 
 # Data Variables: Do not change unless data is regenerated
 DATASIZE = 20480
 TIMESTEPS = 40
 
-def loadData(XData,YData):
 
+def loadData(XData, YData):
     X = np.load(XData)
     Y = np.load(YData)
 
@@ -30,7 +30,7 @@ def loadData(XData,YData):
         datasize_filter = DATASIZE
 
     X = X[:datasize_filter, :timestep_filter + 1, :]
-    Y = Y[:datasize_filter,:]
+    Y = Y[:datasize_filter, :]
 
     # Data Normalization
     mean_X, std_X = np.mean(X), np.std(X)
@@ -38,17 +38,19 @@ def loadData(XData,YData):
 
     print(X_normalized.shape, Y.shape)
 
-    return(X_normalized,Y, timestep_filter, datasize_filter)
+    return (X_normalized, Y, timestep_filter, datasize_filter)
 
-X,Y,timestep_filter, datasize_filter = loadData(XName,YName)
+
+X, Y, timestep_filter, datasize_filter = loadData(XName, YName)
 
 if __name__ == "__main__":
     # Model Definition
     model = tf.keras.Sequential([
         tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                             return_sequences=True, kernel_regularizer=tf.keras.regularizers.L1L2()),
+                             return_sequences=True),
         # Optional Other Layers HERE
-        # tf.keras.layers.Dropout(0.3),
+        # , kernel_regularizer=tf.keras.regularizers.L1L2()
+        tf.keras.layers.Dropout(0.3),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(units=5)
     ])
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     model.compile(optimizer='adam', loss='mean_squared_error')
 
     # Train the model
-    model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=32, validation_split=0.2, verbose=0)
+    model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=64, validation_split=0.2, verbose=2)
 
     # Make Plot of Loss
     title = XName[:-4] + ", " + "datapoints: " + str(timestep_filter) + ", Datasize: " + str(datasize_filter)

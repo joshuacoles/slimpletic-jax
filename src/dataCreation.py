@@ -1,8 +1,8 @@
 import numpy as np
-from MVP_Data_Creation import slimplecticSoln
+from MVP_Data_Creation_Josh import slimplecticSoln
 import matplotlib.pyplot as plt
 
-DATASIZE = 1024
+DATASIZE = 20480
 TIMESTEPS = 40
 
 
@@ -23,5 +23,5 @@ def genData():
 
 X,Y = genData()
 
-np.save("xData_0Pos",X)
-np.save("yData_0Pos",Y)
+np.save("xData_lowNoise",X)
+np.save("yData_lowNoise",Y)
