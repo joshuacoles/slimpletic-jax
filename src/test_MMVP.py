@@ -7,35 +7,40 @@ import matplotlib.pyplot as plt
 EPOCHS = 20000
 TRAINING_TIMESTEPS = 10
 TRAINING_DATASIZE = 256
-XData = "xData_1.npy"
-YData = "yData_1.npy"
+XName = "xData_1.npy"
+YName = "yData_1.npy"
 
 # Data Variables: Do not change unless data is regenerated
 DATASIZE = 20480
 TIMESTEPS = 40
 
-X = np.load(XData)
-Y = np.load(YData)
+def loadData(XData,YData):
 
-# Selecting first TRAINING_TIMESTEPS amount of time series data
-if TRAINING_TIMESTEPS < TIMESTEPS:
-    timestep_filter = TRAINING_TIMESTEPS
-else:
-    timestep_filter = TIMESTEPS
-if TRAINING_DATASIZE > 0 and TRAINING_DATASIZE < DATASIZE:
-    datasize_filter = TRAINING_DATASIZE
-else:
-    datasize_filter = DATASIZE
+    X = np.load(XData)
+    Y = np.load(YData)
 
-X = X[:datasize_filter, :timestep_filter + 1, :]
-Y = Y[:datasize_filter,:]
+    # Selecting first TRAINING_TIMESTEPS amount of time series data
+    if TRAINING_TIMESTEPS < TIMESTEPS:
+        timestep_filter = TRAINING_TIMESTEPS
+    else:
+        timestep_filter = TIMESTEPS
+    if TRAINING_DATASIZE > 0 and TRAINING_DATASIZE < DATASIZE:
+        datasize_filter = TRAINING_DATASIZE
+    else:
+        datasize_filter = DATASIZE
 
-# Data Normalization
-mean_X, std_X = np.mean(X), np.std(X)
-X_normalized = (X - mean_X) / std_X
+    X = X[:datasize_filter, :timestep_filter + 1, :]
+    Y = Y[:datasize_filter,:]
 
-print(X_normalized.shape, Y.shape)
+    # Data Normalization
+    mean_X, std_X = np.mean(X), np.std(X)
+    X_normalized = (X - mean_X) / std_X
 
+    print(X_normalized.shape, Y.shape)
+
+    return(X_normalized,Y, timestep_filter, datasize_filter)
+
+X,Y,timestep_filter, datasize_filter = loadData(XName,YName)
 
 if __name__ == "__main__":
     # Model Definition
@@ -52,10 +57,10 @@ if __name__ == "__main__":
     model.compile(optimizer='adam', loss='mean_squared_error')
 
     # Train the model
-    model_loss = model.fit(X_normalized, Y, epochs=EPOCHS, batch_size=32, validation_split=0.2, verbose=0)
+    model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=32, validation_split=0.2, verbose=0)
 
     # Make Plot of Loss
-    title = XData[:-4] + ", " + "datapoints: " + str(timestep_filter) + ", Datasize: " + str(datasize_filter)
+    title = XName[:-4] + ", " + "datapoints: " + str(timestep_filter) + ", Datasize: " + str(datasize_filter)
     loss_list = model_loss.history["loss"]
     epochs = [i for i in range(1, EPOCHS + 1)]
     plt.plot(epochs, loss_list)
