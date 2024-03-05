@@ -46,19 +46,26 @@ if __name__ == "__main__":
             ),
 
             # Optional Other Layers HERE
-            # , kernel_regularizer=tf.keras.regularizers.L1L2()
+            # , kernel_regularize=tf.keras.regularizers.L1L2()
 
             tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(units=5)
+            tf.keras.layers.Dense(units=5),
         ])
 
         # Compile the model
         model.compile(optimizer='adam', loss='mean_squared_error')
 
         # Train the model
-        model_training_history = model.fit(x_data, y_data, epochs=training_epochs, batch_size=64, validation_split=0.2, verbose=2,
-                                           callbacks=[tb_callback])
+        model_training_history = model.fit(
+            x_data,
+            y_data,
+            epochs=training_epochs,
+            batch_size=64,
+            validation_split=0.2,
+            verbose=2,
+            callbacks=[tb_callback],
+        )
 
     # Make Plot of Loss
     model_loss = model_training_history.history["loss"]
