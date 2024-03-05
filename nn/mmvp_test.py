@@ -1,8 +1,11 @@
+import jax
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from pathlib import Path
-from data_creation import x_path, y_path
+from data_creation import x_path, y_path, solver, q0, pi0, time_steps
+import jax.numpy as jnp
+from jax.experimental import jax2tf
 
 # Training Variables: Can be changed
 training_epochs = 4000
@@ -27,6 +30,41 @@ def load_data(x_data_path, y_data_path):
     print(x_normalised.shape, y.shape)
 
     return x_normalised, y
+
+
+vmaped_solver = jax.vmap(solver.integrate, in_axes=(None, None, None, None, None, 0,))
+
+
+def solver_fn(jax_embedding_batch):
+    return vmaped_solver(
+        q0,
+        pi0,
+        0,
+        time_steps,
+        'coordinate',
+        jax_embedding_batch
+    )
+
+
+converted_integrate = jax2tf.convert(solver_fn)
+
+
+def slimpletic_loss_fn(y_true, y_pred):
+    """
+    Loss function for the slimplectic model
+    :param y_true: The true embedding
+    :param y_pred: The predicted embedding
+    :return: The loss
+    """
+
+    # Generate true path
+    true_q, true_pi = converted_integrate(y_true)
+
+    # Generate predicted path
+    pred_q, pred_pi = converted_integrate(y_pred)
+
+    # Calculate the loss
+    return tf.reduce_mean(tf.square(true_q - pred_q) + tf.square(true_pi - pred_pi))
 
 
 if __name__ == "__main__":
@@ -54,7 +92,7 @@ if __name__ == "__main__":
         ])
 
         # Compile the model
-        model.compile(optimizer='adam', loss='mean_squared_error')
+        model.compile(optimizer='adam', loss=slimpletic_loss_fn)
 
         # Train the model
         model_training_history = model.fit(

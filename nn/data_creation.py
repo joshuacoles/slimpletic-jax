@@ -3,16 +3,17 @@ from slimpletic import DiscretisedSystem, GGLBundle, SolverManual
 import jax
 import jax.numpy as jnp
 
-power_series_order = 2
+embedding_size = 3
 rng = np.random.default_rng()
+
+q0 = jnp.array([1.0])
+pi0 = jnp.array([1.0])
 
 
 def lagrangian_family(q, v, _, embedding):
-    return jax.lax.fori_loop(0, power_series_order,
-                             lambda i, acc: acc +
-                                            (embedding[2 * i] * q[0] ** (i + 1)) +
-                                            (embedding[2 * i + 1] * v[0] ** (i + 1)),
-                             0.0) + embedding[-1]
+    # Fixed power series expansion to make tf happy
+    v = q[0] ** 2 * embedding[0] + v[0] ** 2 * embedding[1] + q[0] * v[0] * embedding[2]
+    return v
 
 
 system = DiscretisedSystem(
@@ -32,11 +33,11 @@ def generate_trajectory(time_steps: int) -> (np.ndarray, np.ndarray, np.ndarray)
     :param time_steps: The number of time steps to generate forwards, will result in time_steps + 1 data points.
     :return:
     """
-    embedding = jnp.array(rng.uniform(-20, 20, power_series_order * 2 + 1))
+    embedding = jnp.array(rng.uniform(-20, 20, embedding_size))
 
     q_slim, pi_slim = solver.integrate(
-        q0=jnp.array([1.0]),
-        pi0=jnp.array([1.0]),
+        q0=q0,
+        pi0=pi0,
         t0=0,
         iterations=time_steps,
         additional_data=embedding,
