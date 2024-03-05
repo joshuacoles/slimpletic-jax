@@ -7,17 +7,31 @@ import jax.numpy as jnp
 PSeriesOrder = 2
 
 
-def random_coeffs():
+def random_coeffs(zero):
     an = []
-    for i in range(0, 2 * PSeriesOrder + 1):
-        an.append((random.random() - 0.5) * 20)
+    for i in range(0, 2 * PSeriesOrder):
+        if zero:
+            if (random.randint(1,5) == 1):
+                an.append(0)
+            else:
+                an.append((random.random() - 0.5) * 20)
+        else:
+            an.append((random.random() - 0.5) * 20)
     return an
 
+def HarmonicOscillatorCoeffs():
+    an = []
+    for i in range(0,2 * PSeriesOrder):
+        if i < 2:
+            an.append(0)
+        else:
+            an.append((random.random() - 0.5) * 20)
+    return an
 
 def function(q, v, _, an):
     return jax.lax.fori_loop(0, PSeriesOrder,
                              lambda i, acc: acc + (an[2 * i] * q[0] ** (i + 1)) + (an[2 * i + 1] * v[0] ** (i + 1)),
-                             0.0) + an[-1]
+                             0.0)
 
 
 system = DiscretisedSystem(
@@ -32,8 +46,8 @@ solver = SolverManual(system)
 
 
 
-def slimplecticSoln(timesteps):
-    coeffs = jnp.array(random_coeffs())
+def slimplecticSoln(timesteps,zero):
+    coeffs = jnp.array(random_coeffs(zero))
 
     q_slim, pi_slim = solver.integrate(
         q0=jnp.array([1.0]),
