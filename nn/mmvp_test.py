@@ -1,65 +1,69 @@
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from data_creation import data_size as generation_data_size, time_steps as generation_time_steps
+from pathlib import Path
+from data_creation import x_path, y_path
 
 # Training Variables: Can be changed
 training_epochs = 4000
 training_time_steps = 10
 training_datasize = 20480
-XName = "xData_lowNoise.npy"
-YName = "yData_lowNoise.npy"
+
+# Profile from batches 10 to 15
+tb_callback = tf.keras.callbacks.TensorBoard(log_dir='logs_old', profile_batch=(0, 20))
 
 
 def load_data(x_data_path, y_data_path):
     x = np.load(x_data_path)
     y = np.load(y_data_path)
 
-    # Truncate trajectories at this point, can't be greater than the length of the data
-    time_steps_filter = np.min(training_time_steps, generation_time_steps)
-    datasize_filter = np.min(training_datasize, generation_data_size)
-
-    x = x[:datasize_filter, :time_steps_filter + 1, :]
-    y = y[:datasize_filter, :]
+    # Truncate trajectories at the r sizes, if these are greater than the generated data then this is a noop
+    x = x[:training_datasize, :training_time_steps + 1, :]
+    y = y[:training_datasize, :]
 
     # Data Normalization
     x_mean, x_std = np.mean(x), np.std(x)
     x_normalised = (x - x_mean) / x_std
     print(x_normalised.shape, y.shape)
 
-    return x_normalised, y, timestep_filter, datasize_filter
+    return x_normalised, y
 
 
 if __name__ == "__main__":
-    X, Y, timestep_filter, datasize_filter = load_data(XName, YName)
+    x_data, y_data = load_data(x_path, y_path)
+    datasize_filter, timestep_filter, _ = x_data.shape
 
-    # Model Definition
-    model = tf.keras.Sequential([
-        tf.keras.layers.LSTM(
-            units=5 * training_time_steps,
-            input_shape=(training_time_steps + 1, 2),
-            return_sequences=True
-        ),
+    with tf.device('/CPU:0'):
+        x_data = tf.constant(x_data)
+        y_data = tf.constant(y_data)
 
-        # Optional Other Layers HERE
-        # , kernel_regularizer=tf.keras.regularizers.L1L2()
+        # Model Definition
+        model = tf.keras.Sequential([
+            tf.keras.layers.LSTM(
+                units=5 * training_time_steps,
+                input_shape=(training_time_steps + 1, 2),
+                return_sequences=True
+            ),
 
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(units=5)
-    ])
+            # Optional Other Layers HERE
+            # , kernel_regularizer=tf.keras.regularizers.L1L2()
 
-    # Compile the model
-    model.compile(optimizer='adam', loss='mean_squared_error')
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(units=5)
+        ])
 
-    # Train the model
-    model_loss = model.fit(X, Y, epochs=training_epochs, batch_size=64, validation_split=0.2, verbose=2)
+        # Compile the model
+        model.compile(optimizer='adam', loss='mean_squared_error')
+
+        # Train the model
+        model_training_history = model.fit(x_data, y_data, epochs=training_epochs, batch_size=64, validation_split=0.2, verbose=2,
+                                           callbacks=[tb_callback])
 
     # Make Plot of Loss
-    title = XName[:-4] + ", " + "datapoints: " + str(timestep_filter) + ", Datasize: " + str(datasize_filter)
-    loss_list = model_loss.history["loss"]
-    epochs = [i for i in range(1, training_epochs + 1)]
-    plt.plot(epochs, loss_list)
-    plt.title(title)
+    model_loss = model_training_history.history["loss"]
+    plt.plot(np.arange(1, training_epochs + 1), model_loss)
+    plt.title(f"{Path(x_path).stem}, datapoints: {timestep_filter}, Datasize: {datasize_filter}")
     plt.show()
-    print("min loss: " + str(min(loss_list)))
+
+    print(f"min loss: {min(model_loss)}")

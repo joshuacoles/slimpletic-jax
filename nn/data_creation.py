@@ -69,9 +69,11 @@ def generate_training_data(data_size: int, time_steps: int):
 
 data_size = 20480
 time_steps = 40
+x_path = "xData_lowNoise.npy"
+y_path = "yData_lowNoise.npy"
 
 if __name__ == "__main__":
     X, Y = generate_training_data(data_size, time_steps)
 
-    np.save("xData_lowNoise", X)
-    np.save("yData_lowNoise", Y)
+    np.save(x_path, X)
+    np.save(y_path, Y)
