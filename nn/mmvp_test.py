@@ -35,15 +35,27 @@ def load_data(x_data_path, y_data_path):
 vmaped_solver = jax.vmap(solver.integrate, in_axes=(None, None, None, None, None, 0,))
 
 
-def solver_fn(jax_embedding_batch):
-    return vmaped_solver(
+def solver_fn(y_true_batched, y_pred_batched):
+    true_q, _ = vmaped_solver(
         q0,
         pi0,
         0,
         time_steps,
         'coordinate',
-        jax_embedding_batch
+        y_true_batched
     )
+
+    pred_q, _ = vmaped_solver(
+        q0,
+        pi0,
+        0,
+        time_steps,
+        'coordinate',
+        y_pred_batched
+    )
+
+    return jnp.sqrt(jnp.sum(jnp.square(true_q - pred_q), axis=1))
+
 
 
 converted_integrate = jax2tf.convert(solver_fn)
@@ -57,14 +69,7 @@ def slimpletic_loss_fn(y_true, y_pred):
     :return: The loss
     """
 
-    # Generate true path
-    true_q, true_pi = converted_integrate(y_true)
-
-    # Generate predicted path
-    pred_q, pred_pi = converted_integrate(y_pred)
-
-    # Calculate the loss
-    return tf.reduce_mean(tf.square(true_q - pred_q) + tf.square(true_pi - pred_pi))
+    return converted_integrate(y_true, y_pred)
 
 
 if __name__ == "__main__":
@@ -99,7 +104,7 @@ if __name__ == "__main__":
             x_data,
             y_data,
             epochs=training_epochs,
-            batch_size=64,
+            batch_size=16,
             validation_split=0.2,
             verbose=2,
             callbacks=[tb_callback],
