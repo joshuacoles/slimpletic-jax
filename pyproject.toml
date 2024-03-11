@@ -19,6 +19,9 @@ pydantic = "^2.6.1"
 mpld3 = "^0.5.10"
 flax = "^0.8.1"
 tf-nightly = "^2.16.0"
+scikit-learn = "^1.4.1.post1"
+nltk = "^3.8.1"
+clu = "^0.0.11"
 
 [tool.poetry.group.dev.dependencies]
 setuptools = "^69.1.0"
