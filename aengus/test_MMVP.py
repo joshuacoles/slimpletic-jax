@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from MVP_Data_Creation_Josh import slimplecticSoln
+from .MVP_Data_Creation_Josh import slimplecticSoln
 import matplotlib.pyplot as plt
 
 # Training Variables: Can be changed

@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from MVP_Data_Creation_Josh import slimplecticSoln
+from .MVP_Data_Creation_Josh import slimplecticSoln
 import matplotlib.pyplot as plt
 
 DATASIZE = 20480
