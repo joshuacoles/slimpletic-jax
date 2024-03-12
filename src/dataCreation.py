@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 DATASIZE = 20480
 TIMESTEPS = 40
 
-suffix = "Data/" + "ZeroCoeffs"
+suffix = "Data/" + "Very_Low_Noise"
 
 def genData():
     q_data, pi_data, L_data = [], [], []

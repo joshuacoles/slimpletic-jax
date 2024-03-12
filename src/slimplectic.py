@@ -3,7 +3,7 @@ from sympy import *
 import numpy
 import scipy.optimize
 
-from .slimplectic_GGL import Symbol, q_Generate_pm, Gen_GGL_NC_VI_Map
+from slimplectic_GGL import Symbol, q_Generate_pm, Gen_GGL_NC_VI_Map
 
 
 ###########################################
