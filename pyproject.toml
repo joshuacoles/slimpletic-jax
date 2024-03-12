@@ -2,7 +2,7 @@
 name = "slimplectic-jax"
 version = "0.1.0"
 description = ""
-authors = ["Joshua Coles <josh@coles.to>"]
+authors = ["Joshua Coles <josh@coles.to>", "Aengus Roberts <asr66@bath.ac.uk>"]
 readme = "README.md"
 packages = [{ include = "slimplectic_jax" }]
 
