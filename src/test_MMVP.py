@@ -1,20 +1,34 @@
 import numpy as np
 import tensorflow as tf
-import time
-from MVP_Data_Creation import slimplecticSoln
+from MVP_Data_Creation_Josh import slimplecticSoln
 import matplotlib.pyplot as plt
 
 # Training Variables: Can be changed
-EPOCHS = 800
+EPOCHS = 400
 TRAINING_TIMESTEPS = 12
-TRAINING_DATASIZE = 10240
-dataName = "HarmonicOscillator"
+TRAINING_DATASIZE = 5120
+dataName = "ZeroCoeffs"
 XName = "Data/" + dataName + "/xData.npy"
 YName = "Data/" + dataName + "/yData.npy"
 
 # Data Variables: Do not change unless data is regenerated
 DATASIZE = 20480
 TIMESTEPS = 40
+
+
+def custom_loss(y_True, y_Pred):
+    print(y_Pred.numpy)
+    q_true, q_pred = [], []
+    qP = slimplecticSoln(TIMESTEPS, False, 1, y_Pred)[0]
+    qT = slimplecticSoln(TIMESTEPS, False, 1, y_True)[0]
+    q_pred.append(qP[0])
+    q_true.append(qT[0])
+
+    loss = 0
+    for i in enumerate(qT):
+        loss += (qT[i] - qP[i]) ** 2
+
+    return loss ** 0.5
 
 
 def loadData(XData, YData):
@@ -48,19 +62,22 @@ X, Y, timestep_filter, datasize_filter = loadData(XName, YName)
 if __name__ == "__main__":
     # Model Definition
     model = tf.keras.Sequential([
-        tf.keras.layers.LSTM(units=500 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+        tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                             return_sequences=True,
                              kernel_regularizer=tf.keras.regularizers.L1L2()),
-        tf.keras.layers.LSTM(units=50 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+        tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                             return_sequences=True,
                              kernel_regularizer=tf.keras.regularizers.L1L2()),
         tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
                              return_sequences=True, kernel_regularizer=tf.keras.regularizers.L1L2()),
         # Optional Other Layers HERE
-        tf.keras.layers.Dropout(0.3),
+        # tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(units=4)
     ])
 
     # Compile the model
+    # 'mean_squared_error'
     model.compile(optimizer='adam', loss='mean_squared_error')
 
     # Train the model
