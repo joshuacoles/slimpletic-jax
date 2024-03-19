@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 
+import jax
 import jaxopt
 from jax import numpy as jnp
 import numpy as np
@@ -135,5 +136,7 @@ for i in range(10):
         "true_embedding": true_embedding.tolist(),
         "loss": float(loss_fn(embedding)),
         "maxiter": maxiter,
-        "opt_state": gradient_descent_result.state._asdict(),
+        "opt_state": {
+            "iter_num": gradient_descent_result.state.iter_num.tolist(),
+        }
     }, open(f"{root}/{i}.json", "w"), indent=2)
