@@ -1,9 +1,12 @@
+import datetime
+import os
+
 import jaxopt
 from jax import numpy as jnp
 import numpy as np
 
 from loss_fn.graph_helpers import plot_variation_graph, create_plots
-from loss_fn.loss_fns import rms_both_loss_fn
+from loss_fn.loss_fns import make_rms_both
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
 
@@ -69,15 +72,25 @@ def make_solver(family):
     )
 
 
-t, solve = make_solver(lagrangian_family)
+# Choose family and target embedding
+# t, solve = make_solver(lagrangian_family)
+# true_embedding = jnp.array([-0.5, 0.5, 0])
+# system_label = "SHM emb3"
 
-# T - V
-# 1/2 * m * v^2 - 1/2 * k * q^2
-true_embedding = jnp.array([-0.5, 0.5, 0])
-true_embedding_emb4 = jnp.array([-0.5, 0.5, 0, 1.0])
-target_q, target_pi = solve(true_embedding)
+t, solve = make_solver(lagrangian_family_emb4)
+true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
+system_label = "SHM emb4"
 
-loss_fn = lambda trial_embedding: rms_both_loss_fn(solve, trial_embedding, target_q, target_pi)
+# Choose loss function
+loss_fn = make_rms_both(solve, true_embedding)
+loss_fn_label = "RMS (Both) Loss"
+
+batch = datetime.datetime.now().isoformat()
+
+root = f"figures/{loss_fn_label}/{system_label}/{batch}"
+os.makedirs(root)
+
+target_q, _target_pi = solve(true_embedding)
 
 for i in range(10):
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
@@ -90,7 +103,7 @@ for i in range(10):
         maxiter=1000,
         verbose=True,
     ).run(
-        jnp.array(np.random.rand(3)),
+        jnp.array(np.random.rand(true_embedding.size)),
     ).params
 
     print(embedding)
@@ -109,3 +122,4 @@ for i in range(10):
     comparison_ax.plot(t, target_q, label="Expected")
 
     fig.show()
+    fig.savefig(f"{root}/{i}.png")

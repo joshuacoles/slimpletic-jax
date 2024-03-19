@@ -8,21 +8,28 @@ def rms(x, y):
     return jnp.sqrt(jnp.mean((x - y) ** 2))
 
 
-@partial(jit, static_argnums=(0,))
-def rms_both_loss_fn(solve, embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarray):
+def make_rms_both(solve: Callable, true_embedding: jnp.ndarray):
     """
     The most naive physically informed loss function for the embedding problem. It computes the RMS of the difference
     between the target and the actual q and pi values.
 
     We define "physically informed" to be a loss which is in some way related to the physics of the system.
     """
-    q, pi = solve(embedding)
-    return rms(q, target_q) + rms(pi, target_pi)
+    def loss_fn(embedding: jnp.ndarray):
+        q, pi = solve(embedding)
+        target_q, target_pi = solve(true_embedding)
+        return rms(q, target_q) + rms(pi, target_pi)
+
+    return jit(loss_fn)
 
 
-def embedding_rms_loss_fn(embedding: jnp.ndarray, true_embedding: jnp.ndarray):
+def make_embedding_rms(_solve: Callable, true_embedding: jnp.ndarray):
     """
     I suppose an even more naive loss function for the embedding problem. It computes the RMS of the difference between
     the target and the actual embedding, this is not at all
     """
-    return jnp.sqrt(jnp.mean((embedding - true_embedding) ** 2))
+
+    def loss_fn(embedding: jnp.ndarray):
+        return rms(embedding, true_embedding)
+
+    return jit(loss_fn)
