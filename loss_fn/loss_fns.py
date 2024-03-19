@@ -1,14 +1,15 @@
-from jax import numpy as jnp, jit
+from functools import partial
+from typing import Callable
 
-from loss_fn.work import solve
+from jax import numpy as jnp, jit
 
 
 def rms(x, y):
     return jnp.sqrt(jnp.mean((x - y) ** 2))
 
 
-@jit
-def rms_both_loss_fn(embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarray):
+@partial(jit, static_argnums=(0,))
+def rms_both_loss_fn(solve, embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarray):
     """
     The most naive physically informed loss function for the embedding problem. It computes the RMS of the difference
     between the target and the actual q and pi values.

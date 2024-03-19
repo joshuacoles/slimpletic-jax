@@ -6,8 +6,6 @@ from loss_fn.graph_helpers import plot_variation_graph, create_plots
 from loss_fn.loss_fns import rms_both_loss_fn
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
-dof = 1
-
 
 def lagrangian_family(q, v, _, embedding):
     """
@@ -26,7 +24,24 @@ def lagrangian_family(q, v, _, embedding):
     return v
 
 
-def make_solver():
+def lagrangian_family_emb4(q, v, _, embedding):
+    """
+    A 4 parameter family of Lagrangians for 1D coordinates of the form
+
+    \\begin{equation}
+    L(q, v) = e_3 \\cdot (q^2 \\cdot e_0 + v^2 \\cdot e_1 + qv e_2)
+    \\end{equation}
+
+    where $e \\in \\R^3$ is the embedding vector.
+    """
+    v = embedding[3] * (embedding[0] * (q[0] ** 2) +
+                        embedding[1] * (v[0] ** 2) +
+                        embedding[2] * (q[0] * v[0]))
+
+    return v
+
+
+def make_solver(family):
     q0 = jnp.array([0.0])
     pi0 = jnp.array([1.0])
     t0 = 0
@@ -40,7 +55,7 @@ def make_solver():
     embedded_system_solver = SolverScan(DiscretisedSystem(
         dt=dt,
         ggl_bundle=ggl_bundle,
-        lagrangian=lagrangian_family,
+        lagrangian=family,
         k_potential=None,
         pass_additional_data=True
     ))
@@ -54,22 +69,22 @@ def make_solver():
     )
 
 
-t, solve = make_solver()
+t, solve = make_solver(lagrangian_family)
 
 # T - V
 # 1/2 * m * v^2 - 1/2 * k * q^2
 true_embedding = jnp.array([-0.5, 0.5, 0])
+true_embedding_emb4 = jnp.array([-0.5, 0.5, 0, 1.0])
 target_q, target_pi = solve(true_embedding)
 
-loss_fn = lambda trial_embedding: rms_both_loss_fn(trial_embedding, target_q, target_pi)
+loss_fn = lambda trial_embedding: rms_both_loss_fn(solve, trial_embedding, target_q, target_pi)
 
 for i in range(10):
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
-        embedding_size=3,
+        embedding_size=true_embedding.size,
         label="RMS (Both) Loss"
     )
 
-    # embedding = jnp.array(np.random.rand(3))
     embedding = jaxopt.GradientDescent(
         loss_fn,
         maxiter=1000,
