@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from typing import Callable
 
 import numpy as np
@@ -44,9 +45,16 @@ class System:
     solve: Callable
 
 
-def create_system(family_key, loss_fn_key, true_embedding):
+def create_system(family_key, loss_fn_key, system_key_or_true_embedding):
     import families
     import loss_fns
+
+    system_manifest = json.load(open("systems.json", "r"))
+
+    if type(system_key_or_true_embedding) == str:
+        true_embedding = jnp.array(system_manifest[family_key][system_key_or_true_embedding])
+    else:
+        true_embedding = system_key_or_true_embedding
 
     family = getattr(families, family_key)
     t, solve = make_solver(family)

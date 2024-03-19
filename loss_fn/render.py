@@ -28,15 +28,15 @@ if __name__ == "__main__":
     true_embedding = jnp.array(data['true_embedding'])
     embedding = jnp.array(data['found_embedding'])
 
-    family_label = data['keys']['family']
-    system_label = data['keys']['system']
-    loss_fn_label = data['keys']['loss_fn']
+    family_key = data['keys']['family']
+    loss_fn_key = data['keys']['loss_fn']
+    system_key = data['keys']['system']
 
-    system = create_system(family_label, loss_fn_label, true_embedding)
+    system = create_system(family_key, loss_fn_key, true_embedding)
 
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
-        embedding_size=true_embedding.size,
-        label=f"{family_label} {system_label} {loss_fn_label}"
+        embedding_size=system.true_embedding.size,
+        label=f"{family_key} {system_key} {loss_fn_key}"
     )
 
     plot_variation_graph(
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         loss_variation_size
     )
 
-    target_q = system.solve(true_embedding)[0]
+    target_q = system.solve(system.true_embedding)[0]
     actual_q = system.solve(embedding)[0]
     comparison_ax.plot(system.t, target_q, label="Expected")
     comparison_ax.plot(system.t, actual_q, label="Predicted", linestyle="--")

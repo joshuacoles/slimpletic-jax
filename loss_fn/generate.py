@@ -18,14 +18,14 @@ from jax import numpy as jnp, jit
 import numpy as np
 from loss_fn.utils import create_system
 
-true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
+system_key = "shm"
 family_key = "power_series_with_prefactor"
 loss_fn_key = loss_fns.q_only.__name__
 
 system = create_system(
     family_key,
     loss_fn_key,
-    true_embedding,
+    system_key,
 )
 
 samples = 100
@@ -36,11 +36,11 @@ batch = datetime.datetime.now().isoformat()
 root = f"figures/{loss_fn_key}/SHM {family_key}/{batch}"
 os.makedirs(root)
 
-true_loss = system.loss_fn(true_embedding)
+true_loss = system.loss_fn(system.true_embedding)
 
 for i in range(100):
     print("Running", i)
-    random_initial_embedding = jnp.array(np.random.rand(true_embedding.size))
+    random_initial_embedding = jnp.array(np.random.rand(system.true_embedding.size))
     gradient_descent_result = jaxopt.GradientDescent(
         system.loss_fn,
         maxiter=maxiter,
@@ -52,7 +52,7 @@ for i in range(100):
     json.dump({
         "initial_embedding": random_initial_embedding.tolist(),
         "found_embedding": embedding.tolist(),
-        "true_embedding": true_embedding.tolist(),
+        "true_embedding": system.true_embedding.tolist(),
         "loss": float(system.loss_fn(embedding)),
         "true_loss": float(true_loss),
         "maxiter": maxiter,
@@ -60,7 +60,7 @@ for i in range(100):
             "iter_num": gradient_descent_result.state.iter_num.tolist(),
         },
         "keys": {
-            "system": "SHM",
+            "system": system_key,
             "family": family_key,
             "loss_fn": loss_fn_key,
         }
