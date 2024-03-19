@@ -74,12 +74,12 @@ def q_only_with_embedding_norm_and_reverse_linear_weights(solve: Callable, true_
     - Weight divergence as exp
     """
     target_q, target_pi = solve(true_embedding)
-    weights = jnp.arange(target_q.shape[0], 0, -1)
+    weights = jnp.arange(target_q.shape[0], 0, -1) / target_q.shape[0]
 
     def loss_fn(embedding: jnp.ndarray):
         q, _pi = solve(embedding)
         # We add the norm of the embedding to the loss function to stop the embedding from growing too large
-        return jnp.linalg.norm(embedding) + jnp.dot(weights, jnp.abs(target_q - q))
+        return jnp.linalg.norm(embedding) + jnp.sum(jnp.dot(weights, jnp.abs(target_q - q)))
 
     return jit(loss_fn)
 

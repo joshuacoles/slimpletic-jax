@@ -2,9 +2,8 @@ import datetime
 import json
 import os
 
-import jax
 import jaxopt
-from jax import numpy as jnp
+from jax import numpy as jnp, jit
 import numpy as np
 
 from loss_fn.graph_helpers import plot_variation_graph, create_plots
@@ -79,12 +78,12 @@ def make_solver(family):
 # true_embedding = jnp.array([-0.5, 0.5, 0])
 # system_label = "SHM emb3"
 
-t, solve = make_solver(lagrangian_family_emb4)
+t, solve = make_solver(jit(lagrangian_family_emb4))
 true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
 system_label = "SHM emb4"
 
 # Choose loss function
-loss_fn_type = loss_fns.q_and_pi_with_embedding_norm
+loss_fn_type = loss_fns.q_only_with_embedding_norm_and_reverse_linear_weights
 loss_fn = loss_fn_type(solve, true_embedding)
 loss_fn_label = loss_fn_type.__name__
 
@@ -94,7 +93,7 @@ root = f"figures/{loss_fn_label}/{system_label}/{batch}"
 os.makedirs(root)
 
 target_q, _target_pi = solve(true_embedding)
-maxiter = 1000
+maxiter = 500
 
 for i in range(10):
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
