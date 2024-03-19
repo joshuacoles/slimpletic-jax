@@ -24,17 +24,19 @@ def make_rms_both(solve: Callable, true_embedding: jnp.ndarray):
     return jit(loss_fn)
 
 
-def q_only_exp_weighted(solve: Callable, true_embedding: jnp.ndarray):
+def q_only_linear_weighted(solve: Callable, true_embedding: jnp.ndarray):
     """
     - Only care about q
     - Weight divergence as exp
     """
     target_q, target_pi = solve(true_embedding)
-    weightings = jnp.exp(jnp.arange(0, target_q.size))
+    weightings = jnp.arange(0, target_q.shape[0])
 
     def loss_fn(embedding: jnp.ndarray):
         q, _pi = solve(embedding)
         return jnp.sum(jnp.dot(weightings, jnp.abs(target_q - q)))
+
+    return jit(loss_fn)
 
 
 def q_only(solve: Callable, true_embedding: jnp.ndarray):
@@ -47,6 +49,20 @@ def q_only(solve: Callable, true_embedding: jnp.ndarray):
     def loss_fn(embedding: jnp.ndarray):
         q, _pi = solve(embedding)
         return rms(q, target_q)
+
+    return jit(loss_fn)
+
+
+def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
+    """
+    - Only care about q
+    - Weight divergence as exp
+    """
+    target_q, target_pi = solve(true_embedding)
+
+    def loss_fn(embedding: jnp.ndarray):
+        q, _pi = solve(embedding)
+        return rms(q, target_q) + jnp.linalg.norm(embedding)
 
     return jit(loss_fn)
 

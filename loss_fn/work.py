@@ -7,7 +7,7 @@ from jax import numpy as jnp
 import numpy as np
 
 from loss_fn.graph_helpers import plot_variation_graph, create_plots
-from loss_fn.loss_fns import make_rms_both, q_only_exp_weighted
+import loss_fns as loss_fns
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
 
@@ -83,8 +83,9 @@ true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
 system_label = "SHM emb4"
 
 # Choose loss function
-loss_fn = q_only_exp_weighted(solve, true_embedding)
-loss_fn_label = q_only_exp_weighted.__name__
+loss_fn_type = loss_fns.q_only_with_embedding_norm
+loss_fn = loss_fn_type(solve, true_embedding)
+loss_fn_label = loss_fn_type.__name__
 
 batch = datetime.datetime.now().isoformat()
 
