@@ -24,7 +24,7 @@ def make_rms_both(solve: Callable, true_embedding: jnp.ndarray):
     return jit(loss_fn)
 
 
-def make_attempt_1(solve: Callable, true_embedding: jnp.ndarray):
+def q_only_exp_weighted(solve: Callable, true_embedding: jnp.ndarray):
     """
     - Only care about q
     - Weight divergence as exp
@@ -34,7 +34,7 @@ def make_attempt_1(solve: Callable, true_embedding: jnp.ndarray):
 
     def loss_fn(embedding: jnp.ndarray):
         q, _pi = solve(embedding)
-        return jnp.dot(weightings, jnp.abs(target_q - q))
+        return jnp.sum(jnp.dot(weightings, jnp.abs(target_q - q)))
 
     return jit(loss_fn)
 
