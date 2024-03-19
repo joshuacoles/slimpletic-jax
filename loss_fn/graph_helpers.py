@@ -5,7 +5,6 @@ import jax
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 import jax.numpy as jnp
-import numpy as np
 
 
 def determine_grid_dimensions(num_plots):

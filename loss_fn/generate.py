@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+import os
+import sys
+import pathlib
+
+# Get the directory of the current script
+script_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(script_dir.parent))
+
 import datetime
 import json
 import os
