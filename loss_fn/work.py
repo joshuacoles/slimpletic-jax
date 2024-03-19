@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 
 import jaxopt
@@ -91,19 +92,21 @@ root = f"figures/{loss_fn_label}/{system_label}/{batch}"
 os.makedirs(root)
 
 target_q, _target_pi = solve(true_embedding)
+maxiter = 1000
 
 for i in range(10):
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
         embedding_size=true_embedding.size,
-        label="RMS (Both) Loss"
+        label=f"{system_label}, {loss_fn_label}"
     )
 
+    random_initial_embedding = jnp.array(np.random.rand(true_embedding.size))
     embedding = jaxopt.GradientDescent(
         loss_fn,
-        maxiter=1000,
+        maxiter=maxiter,
         verbose=True,
     ).run(
-        jnp.array(np.random.rand(true_embedding.size)),
+        random_initial_embedding,
     ).params
 
     print(embedding)
@@ -123,3 +126,10 @@ for i in range(10):
 
     fig.show()
     fig.savefig(f"{root}/{i}.png")
+    json.dump({
+        "initial_embedding": random_initial_embedding.tolist(),
+        "found_embedding": embedding.tolist(),
+        "true_embedding": true_embedding.tolist(),
+        "loss": float(loss_fn(embedding)),
+        "maxiter": maxiter,
+    }, open(f"{root}/{i}.json", "w"))
