@@ -11,7 +11,7 @@ import loss_fns as loss_fns
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
 
-def lagrangian_family(q, v, _, embedding):
+def basic_power_series(q, v, _, embedding):
     """
     A 3 parameter family of Lagrangians for 1D coordinates of the form
 
@@ -28,7 +28,7 @@ def lagrangian_family(q, v, _, embedding):
     return v
 
 
-def lagrangian_family_emb4(q, v, _, embedding):
+def power_series_with_prefactor(q, v, _, embedding):
     """
     A 4 parameter family of Lagrangians for 1D coordinates of the form
 
@@ -78,7 +78,7 @@ def make_solver(family):
 # true_embedding = jnp.array([-0.5, 0.5, 0])
 # system_label = "SHM emb3"
 
-t, solve = make_solver(jit(lagrangian_family_emb4))
+t, solve = make_solver(jit(power_series_with_prefactor))
 true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
 system_label = "SHM emb4"
 
@@ -93,9 +93,10 @@ root = f"figures/{loss_fn_label}/{system_label}/{batch}"
 os.makedirs(root)
 
 target_q, _target_pi = solve(true_embedding)
-maxiter = 500
+maxiter = 100
+true_loss = loss_fn(true_embedding)
 
-for i in range(10):
+for i in range(100):
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
         embedding_size=true_embedding.size,
         label=f"{system_label}, {loss_fn_label}"
@@ -134,8 +135,14 @@ for i in range(10):
         "found_embedding": embedding.tolist(),
         "true_embedding": true_embedding.tolist(),
         "loss": float(loss_fn(embedding)),
+        "true_loss": true_loss,
         "maxiter": maxiter,
         "opt_state": {
             "iter_num": gradient_descent_result.state.iter_num.tolist(),
+        },
+        "labels": {
+            "system": None,
+            "family": None,
+            "loss_fn": None,
         }
     }, open(f"{root}/{i}.json", "w"), indent=2)
