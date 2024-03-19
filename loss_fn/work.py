@@ -83,7 +83,7 @@ true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
 system_label = "SHM emb4"
 
 # Choose loss function
-loss_fn_type = loss_fns.q_only_with_embedding_norm
+loss_fn_type = loss_fns.q_and_pi_with_embedding_norm
 loss_fn = loss_fn_type(solve, true_embedding)
 loss_fn_label = loss_fn_type.__name__
 
@@ -102,13 +102,15 @@ for i in range(10):
     )
 
     random_initial_embedding = jnp.array(np.random.rand(true_embedding.size))
-    embedding = jaxopt.GradientDescent(
+    gradient_descent_result = jaxopt.GradientDescent(
         loss_fn,
         maxiter=maxiter,
         verbose=True,
     ).run(
         random_initial_embedding,
-    ).params
+    )
+
+    embedding = gradient_descent_result.params
 
     print(embedding)
 
@@ -133,4 +135,5 @@ for i in range(10):
         "true_embedding": true_embedding.tolist(),
         "loss": float(loss_fn(embedding)),
         "maxiter": maxiter,
-    }, open(f"{root}/{i}.json", "w"))
+        "opt_state": gradient_descent_result.state._asdict(),
+    }, open(f"{root}/{i}.json", "w"), indent=2)

@@ -62,7 +62,23 @@ def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
 
     def loss_fn(embedding: jnp.ndarray):
         q, _pi = solve(embedding)
+        # We add the norm of the embedding to the loss function to stop the embedding from growing too large
         return rms(q, target_q) + jnp.linalg.norm(embedding)
+
+    return jit(loss_fn)
+
+
+def q_and_pi_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
+    """
+    - Only care about q
+    - Weight divergence as exp
+    """
+    target_q, target_pi = solve(true_embedding)
+
+    def loss_fn(embedding: jnp.ndarray):
+        q, pi = solve(embedding)
+        # We add the norm of the embedding to the loss function to stop the embedding from growing too large
+        return rms(q, target_q) + rms(pi, target_pi) + jnp.linalg.norm(embedding)
 
     return jit(loss_fn)
 
