@@ -1,10 +1,9 @@
-import jax
 import jaxopt
-import matplotlib.pyplot as plt
-from jax import jit, grad, numpy as jnp
+from jax import numpy as jnp
 import numpy as np
 
-from loss_fn.graph_helpers import plot_variation_graph, create_plots, plot_comparison
+from loss_fn.graph_helpers import plot_variation_graph, create_plots
+from loss_fn.loss_fns import rms_both_loss_fn
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
 dof = 1
@@ -57,61 +56,41 @@ def make_solver():
 
 t, solve = make_solver()
 
-
-def rms(x, y):
-    return jnp.sqrt(jnp.mean((x - y) ** 2))
-
-
-@jit
-def rms_both_loss_fn(embedding: jnp.ndarray, target_q: jnp.ndarray, target_pi: jnp.ndarray):
-    """
-    The most naive physically informed loss function for the embedding problem. It computes the RMS of the difference
-    between the target and the actual q and pi values.
-
-    We define "physically informed" to be a loss which is in some way related to the physics of the system.
-    """
-    q, pi = solve(embedding)
-    return rms(q, target_q) + rms(pi, target_pi)
-
-
-def embedding_rms_loss_fn(embedding: jnp.ndarray, true_embedding: jnp.ndarray):
-    """
-    I suppose an even more naive loss function for the embedding problem. It computes the RMS of the difference between
-    the target and the actual embedding, this is not at all
-    """
-    return jnp.sqrt(jnp.mean((embedding - true_embedding) ** 2))
-
-
 # T - V
 # 1/2 * m * v^2 - 1/2 * k * q^2
 true_embedding = jnp.array([-0.5, 0.5, 0])
 target_q, target_pi = solve(true_embedding)
 
-fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(embedding_size=3, label="RMS (Both) Loss")
+loss_fn = lambda trial_embedding: rms_both_loss_fn(trial_embedding, target_q, target_pi)
 
-loss_fn = lambda trial: rms_both_loss_fn(trial, target_q, target_pi)
+for i in range(10):
+    fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
+        embedding_size=3,
+        label="RMS (Both) Loss"
+    )
 
-# embedding = jnp.array(np.random.rand(3))
-embedding = jaxopt.GradientDescent(
-    loss_fn,
-    maxiter=1000,
-    verbose=True,
-).run(
-    jnp.array(np.random.rand(3)),
-).params
+    # embedding = jnp.array(np.random.rand(3))
+    embedding = jaxopt.GradientDescent(
+        loss_fn,
+        maxiter=1000,
+        verbose=True,
+    ).run(
+        jnp.array(np.random.rand(3)),
+    ).params
 
-print(embedding)
+    print(embedding)
 
-plot_variation_graph(
-    loss_fn,
-    embedding,
-    jnp.linspace(-1, 1, 100),
-    fig,
-    variation_grid_spec,
-    loss_variation_size
-)
+    plot_variation_graph(
+        loss_fn,
+        embedding,
+        jnp.linspace(-1, 1, 100),
+        fig,
+        variation_grid_spec,
+        loss_variation_size
+    )
 
-comparison_ax.plot(t, solve(embedding)[0], label="Predicted", linestyle="--")
-comparison_ax.plot(t, target_q, label="Expected")
+    actual_q = solve(embedding)[0]
+    comparison_ax.plot(t, actual_q, label="Predicted", linestyle="--")
+    comparison_ax.plot(t, target_q, label="Expected")
 
-fig.show()
+    fig.show()
