@@ -3,6 +3,8 @@ import os
 import sys
 import pathlib
 
+from loss_fn import loss_fns
+
 # Get the directory of the current script
 script_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(str(script_dir.parent))
@@ -18,7 +20,7 @@ from loss_fn.utils import create_system
 
 true_embedding = jnp.array([-0.5, 0.5, 0, 1.0])
 family_key = "power_series_with_prefactor"
-loss_fn_key = "q_only_with_embedding_norm_and_reverse_linear_weights"
+loss_fn_key = loss_fns.q_only.__name__
 
 system = create_system(
     family_key,
@@ -31,7 +33,7 @@ maxiter = 100
 
 batch = datetime.datetime.now().isoformat()
 
-root = f"figures/q_only_with_embedding_norm_and_reverse_linear_weights/SHM emb4/{batch}"
+root = f"figures/{loss_fn_key}/SHM {family_key}/{batch}"
 os.makedirs(root)
 
 true_loss = system.loss_fn(true_embedding)
@@ -43,9 +45,7 @@ for i in range(100):
         system.loss_fn,
         maxiter=maxiter,
         verbose=True,
-    ).run(
-        random_initial_embedding,
-    )
+    ).run(random_initial_embedding)
 
     embedding = gradient_descent_result.params
     print(embedding)
