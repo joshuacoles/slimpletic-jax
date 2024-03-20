@@ -31,16 +31,17 @@ system = create_system(
     timesteps=100
 )
 
-maxiter = 100
+maxiter = 200
+samples = 100
 
 batch = datetime.datetime.now().isoformat()
-
-root = f"figures/{loss_fn_key}/{system_key}-{family_key}/{batch}"
+data_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))).parent.joinpath('data')
+root = f"{data_dir}/{loss_fn_key}/{system_key}-{family_key}/{batch}"
 os.makedirs(root)
 
 true_loss = system.loss_fn(system.true_embedding)
 
-for i in range(100):
+for i in range(samples):
     print("Running", i)
     random_initial_embedding = jnp.array(np.random.rand(system.true_embedding.size))
     gradient_descent_result = jaxopt.GradientDescent(
