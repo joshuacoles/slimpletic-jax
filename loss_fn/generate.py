@@ -22,13 +22,11 @@ import numpy as np
 from loss_fn.utils import create_system
 
 system_key = "shm"
-family_key = families.power_series_with_prefactor.__name__
-loss_fn_key = loss_fns.q_rms_embedding_norm_huber.__name__
 
 system = create_system(
-    family_key,
-    loss_fn_key,
-    system_key,
+    family=families.power_series_with_prefactor,
+    loss_fn=loss_fns.q_rms_embedding_norm_huber,
+    system_key_or_true_embedding=system_key,
     timesteps=100
 )
 
@@ -38,13 +36,12 @@ verbose=False
 
 batch = datetime.datetime.now().isoformat()
 data_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))).parent.joinpath('data')
-root = f"{data_dir}/{loss_fn_key}/{system_key}-{family_key}/{batch}"
+root = f"{data_dir}/{system.loss_fn_key}/{system_key}-{system.family.key}/{batch}"
 os.makedirs(root)
 
 true_loss = system.loss_fn(system.true_embedding)
 
 for i in tqdm(range(samples)):
-    print("Running", i)
     random_initial_embedding = jnp.array(np.random.rand(system.true_embedding.size))
     gradient_descent_result = jaxopt.GradientDescent(
         system.loss_fn,
@@ -53,7 +50,7 @@ for i in tqdm(range(samples)):
     ).run(random_initial_embedding)
 
     embedding = gradient_descent_result.params
-    print(embedding)
+    tqdm.write(f"Found embedding: {embedding}")
     json.dump({
         "initial_embedding": random_initial_embedding.tolist(),
         "found_embedding": embedding.tolist(),
@@ -67,7 +64,7 @@ for i in tqdm(range(samples)):
         },
         "keys": {
             "system": system_key,
-            "family": family_key,
-            "loss_fn": loss_fn_key,
+            "family": system.family.key,
+            "loss_fn": system.loss_fn_key,
         }
     }, open(f"{root}/{i}.json", "w"), indent=2)
