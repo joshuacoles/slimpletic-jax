@@ -2,6 +2,7 @@
 import os
 import sys
 import pathlib
+from tqdm import tqdm
 
 # When running it from the command line we need to add the required things to the path
 if __name__ == "__main__":
@@ -32,7 +33,8 @@ system = create_system(
 )
 
 maxiter = 200
-samples = 100
+samples = 200
+verbose=False
 
 batch = datetime.datetime.now().isoformat()
 data_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))).parent.joinpath('data')
@@ -41,13 +43,13 @@ os.makedirs(root)
 
 true_loss = system.loss_fn(system.true_embedding)
 
-for i in range(samples):
+for i in tqdm(range(samples)):
     print("Running", i)
     random_initial_embedding = jnp.array(np.random.rand(system.true_embedding.size))
     gradient_descent_result = jaxopt.GradientDescent(
         system.loss_fn,
         maxiter=maxiter,
-        verbose=True,
+        verbose=verbose,
     ).run(random_initial_embedding)
 
     embedding = gradient_descent_result.params
