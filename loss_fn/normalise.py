@@ -11,8 +11,8 @@ sys.path.append(str(script_dir.parent))
 
 
 def normlise_prefactor_embedding(embedding: jnp.ndarray) -> jnp.ndarray:
-    first, rest = embedding[0], embedding[1:]
-    return rest / first
+    prefactor, rest = embedding[-1], embedding[:-1]
+    return rest / prefactor
 
 
 if __name__ == "__main__":

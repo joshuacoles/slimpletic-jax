@@ -1,3 +1,13 @@
+def dho():
+    def lagrangian(q, v, _, embedding):
+        return embedding[0] * (v[0] ** 2) - embedding[1] * (q[0] ** 2)
+
+    def k_potential(qp, qm, vp, vm, t, embedding):
+        return embedding[2] * vp[0] * qm[0]
+
+    return lagrangian, k_potential
+
+
 def basic_power_series(q, v, _, embedding):
     """
     A 3 parameter family of Lagrangians for 1D coordinates of the form
