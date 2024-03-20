@@ -69,6 +69,33 @@ def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
     return jit(loss_fn)
 
 
+def q_rms_embedding_norm_huber(solve: Callable, true_embedding: jnp.ndarray):
+    target_q, target_pi = solve(true_embedding)
+    delta = 0.1
+
+    def loss_fn(embedding: jnp.ndarray):
+        q, _pi = solve(embedding)
+        embedding_norm = jnp.linalg.norm(embedding)
+
+        # Calculate the absolute differences between vector elements
+        abs_diffs = jnp.abs(jnp.diff(jnp.sort(embedding)))
+
+        # Apply the Huber loss to the absolute differences
+        huber_losses = jnp.where(
+            abs_diffs <= delta,
+            0.5 * abs_diffs ** 2,
+            delta * abs_diffs - 0.5 * delta ** 2
+        )
+
+        # Sum and normalise the Huber losses
+        huber_loss = jnp.sum(huber_losses) / embedding.size
+
+        return rms(q, target_q) + embedding_norm + huber_loss
+
+    return jit(loss_fn)
+
+
+
 def q_only_with_embedding_norm_and_reverse_linear_weights(solve: Callable, true_embedding: jnp.ndarray):
     """
     - Only care about q

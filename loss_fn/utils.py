@@ -3,16 +3,15 @@ import json
 from typing import Callable
 
 import numpy as np
-from jax import numpy as jnp
+from jax import numpy as jnp, jit
 
 from slimpletic import GGLBundle, SolverScan, DiscretisedSystem
 
 
-def make_solver(family):
+def make_solver(family, iterations):
     q0 = jnp.array([0.0])
     pi0 = jnp.array([1.0])
     t0 = 0
-    iterations = 100
     dt = 0.1
     t = t0 + dt * np.arange(0, iterations + 1)
 
@@ -43,27 +42,30 @@ class System:
     true_embedding: jnp.ndarray
     t: jnp.ndarray
     solve: Callable
+    timesteps: int
 
 
-def create_system(family_key, loss_fn_key, system_key_or_true_embedding):
+def create_system(family_key, loss_fn_key, system_key_or_true_embedding, timesteps):
     import families
     import loss_fns
+    import pathlib
 
-    system_manifest = json.load(open("systems.json", "r"))
+    system_manifest = json.load(open(pathlib.Path(__file__).parent.joinpath('systems.json'), "r"))
 
-    if type(system_key_or_true_embedding) == str:
+    if isinstance(system_key_or_true_embedding, str):
         true_embedding = jnp.array(system_manifest[family_key][system_key_or_true_embedding])
     else:
         true_embedding = system_key_or_true_embedding
 
     family = getattr(families, family_key)
-    t, solve = make_solver(family)
+    t, solve = make_solver(family, timesteps)
     loss_fn = getattr(loss_fns, loss_fn_key)(solve, true_embedding)
 
     return System(
-        family=family,
-        loss_fn=loss_fn,
+        family=jit(family),
+        loss_fn=jit(loss_fn),
         true_embedding=true_embedding,
         t=t,
-        solve=solve
+        solve=solve,
+        timesteps=timesteps,
     )

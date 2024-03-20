@@ -31,8 +31,9 @@ if __name__ == "__main__":
     family_key = data['keys']['family']
     loss_fn_key = data['keys']['loss_fn']
     system_key = data['keys']['system']
+    timesteps = data['timesteps']
 
-    system = create_system(family_key, loss_fn_key, true_embedding)
+    system = create_system(family_key, loss_fn_key, true_embedding, timesteps)
 
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
         embedding_size=system.true_embedding.size,
