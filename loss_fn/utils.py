@@ -21,7 +21,7 @@ def make_solver(family, iterations):
     embedded_system_solver = SolverScan(DiscretisedSystem(
         dt=dt,
         ggl_bundle=ggl_bundle,
-        lagrangian=family,
+        lagrangian=jit(family),
         k_potential=None,
         pass_additional_data=True
     ))
@@ -62,7 +62,7 @@ def create_system(family_key, loss_fn_key, system_key_or_true_embedding, timeste
     loss_fn = getattr(loss_fns, loss_fn_key)(solve, true_embedding)
 
     return System(
-        family=jit(family),
+        family=family,
         loss_fn=jit(loss_fn),
         true_embedding=true_embedding,
         t=t,
