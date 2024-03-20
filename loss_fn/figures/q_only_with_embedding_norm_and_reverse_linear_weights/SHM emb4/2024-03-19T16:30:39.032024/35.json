@@ -1,0 +1,31 @@
+{
+  "initial_embedding": [
+    0.4493323736538575,
+    0.08101604252293271,
+    0.44793881435256866,
+    0.042350664184021114
+  ],
+  "found_embedding": [
+    2.0270557652421175e+20,
+    -6.17710400555431e+21,
+    4725587.879356916,
+    3.028317861870695e+19
+  ],
+  "true_embedding": [
+    -0.5,
+    0.5,
+    0.0,
+    1.0
+  ],
+  "loss": 6.180503257591275e+21,
+  "true_loss": 1.224744871391589,
+  "maxiter": 100,
+  "opt_state": {
+    "iter_num": 100
+  },
+  "keys": {
+    "system": "SHM",
+    "family": "power_series_with_prefactor",
+    "loss_fn": "q_only_with_embedding_norm_and_reverse_linear_weights"
+  }
+}

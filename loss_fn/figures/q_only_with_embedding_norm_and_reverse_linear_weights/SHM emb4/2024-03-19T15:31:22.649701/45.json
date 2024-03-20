@@ -1,0 +1,25 @@
+{
+  "initial_embedding": [
+    0.48144341803837254,
+    0.21033285136409274,
+    0.44931295178793185,
+    0.5490289113665474
+  ],
+  "found_embedding": [
+    NaN,
+    NaN,
+    NaN,
+    NaN
+  ],
+  "true_embedding": [
+    -0.5,
+    0.5,
+    0.0,
+    1.0
+  ],
+  "loss": NaN,
+  "maxiter": 100,
+  "opt_state": {
+    "iter_num": 40
+  }
+}
