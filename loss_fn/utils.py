@@ -53,7 +53,9 @@ class System:
 
 
 def create_system(family: Union[Family, str], loss_fn: Union[Callable, str],
-                  system_key_or_true_embedding: Union[str, jnp.ndarray], timesteps: int):
+                  timesteps: int,
+                  system_key: Union[str, None] = None,
+                  true_embedding: Union[jnp.ndarray, None] = None):
     import families
     import loss_fns
     import pathlib
@@ -66,10 +68,12 @@ def create_system(family: Union[Family, str], loss_fn: Union[Callable, str],
     if isinstance(loss_fn, str):
         loss_fn = getattr(loss_fns, loss_fn)
 
-    if isinstance(system_key_or_true_embedding, str):
-        true_embedding = jnp.array(system_manifest[family.key][system_key_or_true_embedding])
+    if system_key is None and true_embedding is None:
+        raise ValueError("Either system_key or true_embedding must be provided")
+    elif true_embedding is not None:
+        true_embedding = true_embedding
     else:
-        true_embedding = system_key_or_true_embedding
+        true_embedding = jnp.array(system_manifest[family.key][system_key])
 
     t, solve = make_solver(family, timesteps)
     loss_fn = loss_fn(solve, true_embedding)

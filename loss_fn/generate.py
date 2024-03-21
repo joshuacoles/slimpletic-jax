@@ -26,7 +26,7 @@ system_key = "shm"
 system = create_system(
     family=families.power_series_with_prefactor,
     loss_fn=loss_fns.q_rms_embedding_norm_huber,
-    system_key_or_true_embedding=system_key,
+    system_key=system_key,
     timesteps=100
 )
 
