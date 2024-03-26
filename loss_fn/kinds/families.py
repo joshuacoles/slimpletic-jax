@@ -1,0 +1,32 @@
+from dataclasses import dataclass
+from typing import Union
+
+
+@dataclass
+class Family:
+    key: str
+    lagrangian: callable
+    k_potential: Union[callable, None]
+
+
+dho = Family(
+    'dho',
+    lambda q, v, _, embedding: embedding[0] * (v[0] ** 2) - embedding[1] * (q[0] ** 2),
+    lambda qp, qm, vp, vm, t, embedding: embedding[2] * vp[0] * qm[0]
+)
+
+basic_power_series = Family(
+    'basic_power_series',
+    lambda q, v, _, embedding: embedding[0] * (q[0] ** 2) +
+                               embedding[1] * (v[0] ** 2) +
+                               embedding[2] * (q[0] * v[0]),
+    None
+)
+
+power_series_with_prefactor = Family(
+    'power_series_with_prefactor',
+    lambda q, v, _, embedding: embedding[3] * (embedding[0] * (q[0] ** 2) +
+                                               embedding[1] * (v[0] ** 2) +
+                                               embedding[2] * (q[0] * v[0])),
+    None
+)

@@ -221,6 +221,7 @@ class SolverScan(Solver):
     @partial(jax.jit, static_argnums=(0, 4, 5))
     def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time',
                   additional_data=None):
+        print("PANDAS SolverScan.integrate recompiled")
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
