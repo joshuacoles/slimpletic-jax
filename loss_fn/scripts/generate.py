@@ -30,7 +30,7 @@ if len(args) > 1:
     samples = int(args[3])
     maxiter = int(args[4])
 else:
-    system_key = systems.shm
+    system_key = systems.shm_prefactor
     loss_fn_key = loss_fns.q_rms_embedding_norm_huber
     samples = 5
     maxiter = 200

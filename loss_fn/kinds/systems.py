@@ -15,7 +15,7 @@ class PhysicalSystem():
     pi0: jnp.ndarray
 
 
-shm = PhysicalSystem(
+shm_prefactor = PhysicalSystem(
     'shm_prefactor',
     true_embedding=jnp.array([-0.5, 0.5, 0, 1.0], dtype=jnp.float64),
     family=power_series_with_prefactor,
