@@ -4,6 +4,8 @@ DATASIZE = 20480
 DATA_TIMESTEPS = 40
 TRAINING_TIMESTEPS = 10
 
+Name = "HarmonicOscillator"
+
 dataName = "HarmonicOscillator"
 XName = "Data/" + dataName + "/xData.npy"
 YName = "Data/" + dataName + "/yData.npy"
