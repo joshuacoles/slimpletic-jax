@@ -1,13 +1,14 @@
 import numpy as np
 import tensorflow as tf
-from MVP_Data_Creation_Josh import slimplecticSoln
+from .MVP_Data_Creation_Josh import slimplecticSoln
 import matplotlib.pyplot as plt
 
 # Training Variables: Can be changed
-EPOCHS = 400
+EPOCHS = 2000
 TRAINING_TIMESTEPS = 12
-TRAINING_DATASIZE = 5120
-dataName = "ZeroCoeffs"
+TRAINING_DATASIZE = 20480
+dataName = "HarmonicOscillator"
+
 XName = "Data/" + dataName + "/xData.npy"
 YName = "Data/" + dataName + "/yData.npy"
 
@@ -59,19 +60,29 @@ def loadData(XData, YData):
 
 X, Y, timestep_filter, datasize_filter = loadData(XName, YName)
 
+
+def create_layer(units, regularizer):
+    return tf.keras.layers.LSTM(units=50 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                                return_sequences=True,
+                                kernel_regularizer=tf.keras.regularizers.L1L2())
+
+
 if __name__ == "__main__":
     # Model Definition
     model = tf.keras.Sequential([
-        tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+        tf.keras.layers.LSTM(units=50 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
                              return_sequences=True,
                              kernel_regularizer=tf.keras.regularizers.L1L2()),
-        tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+        tf.keras.layers.LSTM(units=25 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                             return_sequences=True,
+                             kernel_regularizer=tf.keras.regularizers.L1L2()),
+        tf.keras.layers.LSTM(units=10 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
                              return_sequences=True,
                              kernel_regularizer=tf.keras.regularizers.L1L2()),
         tf.keras.layers.LSTM(units=5 * TRAINING_TIMESTEPS, input_shape=(TRAINING_TIMESTEPS + 1, 2),
                              return_sequences=True, kernel_regularizer=tf.keras.regularizers.L1L2()),
         # Optional Other Layers HERE
-        # tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dropout(0.05),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(units=4)
     ])
@@ -86,8 +97,10 @@ if __name__ == "__main__":
     # Make Plot of Loss
     title = dataName + ", " + "datapoints: " + str(timestep_filter) + ", Datasize: " + str(datasize_filter)
     loss_list = model_loss.history["loss"]
+    val_loss_list = model_loss.history["val_loss"]
     epochs = [i for i in range(1, EPOCHS + 1)]
     plt.plot(epochs, loss_list)
+    plt.plot(epochs, val_loss_list)
     plt.title(title)
     plt.show()
     print("min loss: " + str(min(loss_list)))
