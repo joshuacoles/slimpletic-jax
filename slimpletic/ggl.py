@@ -30,15 +30,15 @@ def ggl(r: int) -> tuple[Array, Array, Array]:
 
     # (x^2 - 1) * d/dx(P_{r + 1}(x))
     # QUESTION: Why is this multiplied by (x^2 - 1)?
-    poly = jnp.polymul(
-        jnp.array([1, 0, -1]),
-        jnp.polyder(legendre)
+    poly = np.polymul(
+        np.array([1, 0, -1]),
+        np.polyder(legendre)
     )
 
     # The roots of the polynomial are the quadrature points. These are not returned in order, so we sort them.
     # We also clip them to the range [-1, 1] to avoid numerical issues as we know statically that the roots are in this
     # range.
-    xs = jnp.clip(jnp.sort(jnp.real(np.roots(poly))), -1, 1)
+    xs = jnp.array(np.clip(np.sort(np.real(np.roots(poly))), -1, 1))
 
     legendre_at_xs = jnp.polyval(legendre, xs)
     ws = 2 / ((r + 1) * (r + 2) * legendre_at_xs ** 2)
