@@ -1,8 +1,5 @@
-from functools import partial
 from typing import Callable
-
-import jax
-from jax import numpy as jnp, jit
+from jax import numpy as jnp
 
 
 def rms(x, y):
@@ -22,7 +19,7 @@ def make_rms_both(solve: Callable, true_embedding: jnp.ndarray):
         q, pi = solve(embedding)
         return rms(q, target_q) + rms(pi, target_pi)
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def q_only_linear_weighted(solve: Callable, true_embedding: jnp.ndarray):
@@ -37,7 +34,7 @@ def q_only_linear_weighted(solve: Callable, true_embedding: jnp.ndarray):
         q, _pi = solve(embedding)
         return jnp.sum(jnp.dot(weightings, jnp.abs(target_q - q)))
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def q_only(solve: Callable, true_embedding: jnp.ndarray):
@@ -51,7 +48,7 @@ def q_only(solve: Callable, true_embedding: jnp.ndarray):
         q, _pi = solve(embedding)
         return rms(q, target_q)
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
@@ -66,7 +63,7 @@ def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
         # We add the norm of the embedding to the loss function to stop the embedding from growing too large
         return rms(q, target_q) + jnp.linalg.norm(embedding)
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def q_rms_embedding_norm_huber(solve: Callable, true_embedding: jnp.ndarray):
@@ -92,7 +89,7 @@ def q_rms_embedding_norm_huber(solve: Callable, true_embedding: jnp.ndarray):
 
         return rms(q, target_q) + embedding_norm + huber_loss
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 
@@ -109,7 +106,7 @@ def q_only_with_embedding_norm_and_reverse_linear_weights(solve: Callable, true_
         # We add the norm of the embedding to the loss function to stop the embedding from growing too large
         return jnp.linalg.norm(embedding) + jnp.sum(jnp.dot(weights, jnp.abs(target_q - q)))
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def q_argwhere_tol005(solve: Callable, true_embedding: jnp.ndarray):
@@ -125,7 +122,7 @@ def q_argwhere_tol005(solve: Callable, true_embedding: jnp.ndarray):
         )[0][0]
         return argwhere
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def q_and_pi_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
@@ -140,7 +137,7 @@ def q_and_pi_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
         # We add the norm of the embedding to the loss function to stop the embedding from growing too large
         return rms(q, target_q) + rms(pi, target_pi) + jnp.linalg.norm(embedding)
 
-    return jit(loss_fn)
+    return loss_fn
 
 
 def make_embedding_rms(_solve: Callable, true_embedding: jnp.ndarray):
@@ -152,4 +149,4 @@ def make_embedding_rms(_solve: Callable, true_embedding: jnp.ndarray):
     def loss_fn(embedding: jnp.ndarray):
         return rms(embedding, true_embedding)
 
-    return jit(loss_fn)
+    return loss_fn

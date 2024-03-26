@@ -11,7 +11,7 @@ sys.path.append(str(script_dir.parent))
 import json
 import jax.numpy as jnp
 
-from loss_fn.graph_helpers import create_plots, plot_variation_graph
+from loss_fn.utils.graph_helpers import create_plots, plot_variation_graph
 from loss_fn.utils import create_system
 
 if __name__ == "__main__":
@@ -28,21 +28,19 @@ if __name__ == "__main__":
     true_embedding = jnp.array(data['true_embedding'])
     embedding = jnp.array(data['found_embedding'])
 
-    family_key = data['keys']['family']
     loss_fn_key = data['keys']['loss_fn']
     system_key = data['keys']['system']
     timesteps = data['timesteps']
 
     system = create_system(
-        family=family_key,
+        physical_system=system_key,
         loss_fn=loss_fn_key,
-        true_embedding=true_embedding,
         timesteps=timesteps
     )
 
     fig, variation_grid_spec, comparison_ax, loss_variation_size = create_plots(
         embedding_size=system.true_embedding.size,
-        label=f"{family_key} {system_key} {loss_fn_key}"
+        label=f"{system.family.key} {system_key} {loss_fn_key}"
     )
 
     plot_variation_graph(

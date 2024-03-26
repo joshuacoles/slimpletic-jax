@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import datetime
+import json
 import os
 import sys
 import pathlib
@@ -10,44 +12,46 @@ if __name__ == "__main__":
     script_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(str(script_dir.parent))
 
-from loss_fn import loss_fns, families
-
-import datetime
-import json
-import os
-
 import jaxopt
-from jax import numpy as jnp, jit
+from jax import numpy as jnp
 import numpy as np
-from loss_fn.utils import create_system
 
-system_key = "shm"
+from ..kinds import families, loss_fns, systems
+from ..utils import create_system
+
+# import logging
+# Logging, show all logs
+# logging.basicConfig(level=logging.DEBUG)
+
+args = sys.argv
+if len(args) > 1:
+    system_key = args[1]
+    loss_fn_key = args[2]
+else:
+    system_key = systems.shm
+    loss_fn_key = loss_fns.q_rms_embedding_norm_huber
 
 system = create_system(
-    family=families.power_series_with_prefactor,
-    loss_fn=loss_fns.q_rms_embedding_norm_huber,
-    system_key=system_key,
+    physical_system=system_key,
+    loss_fn=loss_fn_key,
     timesteps=100
 )
 
 maxiter = 200
-samples = 200
-verbose=False
+samples = 5
+verbose = False
 
 batch = datetime.datetime.now().isoformat()
 data_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))).parent.joinpath('data')
-root = f"{data_dir}/{system.loss_fn_key}/{system_key}-{system.family.key}/{batch}"
+root = f"{data_dir}/{system.loss_fn_key}/{system.physical_system.key}/{batch}"
 os.makedirs(root)
 
 true_loss = system.loss_fn(system.true_embedding)
+gradient_descent = jaxopt.GradientDescent(system.loss_fn, maxiter=maxiter, verbose=verbose)
 
 for i in tqdm(range(samples)):
     random_initial_embedding = jnp.array(np.random.rand(system.true_embedding.size))
-    gradient_descent_result = jaxopt.GradientDescent(
-        system.loss_fn,
-        maxiter=maxiter,
-        verbose=verbose,
-    ).run(random_initial_embedding)
+    gradient_descent_result = gradient_descent.run(random_initial_embedding)
 
     embedding = gradient_descent_result.params
     tqdm.write(f"Found embedding: {embedding}")
@@ -63,7 +67,7 @@ for i in tqdm(range(samples)):
             "iter_num": gradient_descent_result.state.iter_num.tolist(),
         },
         "keys": {
-            "system": system_key,
+            "system": system.physical_system.key,
             "family": system.family.key,
             "loss_fn": system.loss_fn_key,
         }
