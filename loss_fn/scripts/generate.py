@@ -31,7 +31,7 @@ if len(args) > 1:
     maxiter = int(args[4])
 else:
     system_key = systems.shm_prefactor
-    loss_fn_key = loss_fns.q_rms_embedding_norm_huber
+    loss_fn_key = loss_fns.q_rms_huber_embedding_norm
     samples = 5
     maxiter = 200
 
@@ -64,7 +64,6 @@ for i in tqdm(range(samples)):
     json.dump({
         "initial_embedding": random_initial_embedding.tolist(),
         "found_embedding": embedding.tolist(),
-        "true_embedding": system.true_embedding.tolist(),
         "loss": float(achieved_loss),
         "true_loss": float(true_loss),
         "maxiter": maxiter,

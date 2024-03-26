@@ -44,6 +44,7 @@ shm_prefactor = PhysicalSystem(
 )
 
 systems = {
+    'shm': shm_prefactor,
     'shm_prefactor': shm_prefactor,
 }
 

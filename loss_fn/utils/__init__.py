@@ -76,19 +76,22 @@ def create_system(
     t, solve = make_solver(physical_system, timesteps)
 
     if isinstance(loss_fn, str):
+        loss_fn_key = loss_fn
         make_loss_fn = lookup_loss_fn(loss_fn)
         loss_fn = make_loss_fn(solve, physical_system.true_embedding)
     elif isinstance(loss_fn, dict):
+        loss_fn_key = loss_fn['key']
         make_loss_fn = lookup_loss_fn(loss_fn['key'])
         loss_fn = make_loss_fn(solve, physical_system.true_embedding, loss_fn['config'])
     elif isinstance(loss_fn, Callable):
+        loss_fn_key = loss_fn.__name__
         loss_fn = loss_fn(solve, physical_system.true_embedding)
 
     return GradientDescentBundle(
         physical_system=physical_system,
         family=physical_system.family,
         loss_fn=jit(loss_fn),
-        loss_fn_key=loss_fn.__name__,
+        loss_fn_key=loss_fn_key,
         true_embedding=physical_system.true_embedding,
         t=t,
         solve=solve,

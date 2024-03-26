@@ -6,7 +6,7 @@ import pathlib
 
 # Get the directory of the current script
 script_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(str(script_dir.parent))
+sys.path.append(str(script_dir.parent.parent))
 
 import json
 import jax.numpy as jnp
