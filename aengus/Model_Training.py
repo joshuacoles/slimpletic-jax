@@ -5,9 +5,9 @@ import tensorflow as tf
 import pickle
 
 # Training Variables: Can be changed
-EPOCHS = 2000
+EPOCHS = 500
 TRAINING_TIMESTEPS = 12
-TRAINING_DATASIZE = 20480
+TRAINING_DATASIZE = 10240
 dataName = "HarmonicOscillator"
 
 XName = "Data/" + dataName + "/xData.npy"
@@ -17,6 +17,8 @@ YName = "Data/" + dataName + "/yData.npy"
 DATASIZE = 20480
 TIMESTEPS = 40
 
+#for parallel processing on GPU's
+strategy = tf.distribute.Strategy()
 
 def loadData(XData, YData):
     X = np.load(XData)
@@ -63,20 +65,21 @@ def runModel(layers: int, units: list, regulariser: list, dropout: float, batchs
     :param batchsize: 64,128,256 are usual values
     :return: Loss and ValLoss Lists indexed by Epoch
     """
-    # Model Definition
-    model = tf.keras.Sequential([
-        *[create_layer(units, regulariser, i + 4 - layers) for i in range(layers)],
-        tf.keras.layers.Dropout(dropout),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(units=4)
-    ])
+    with strategy.scope():
+        # Model Definition
+        model = tf.keras.Sequential([
+            *[create_layer(units, regulariser, i + 4 - layers) for i in range(layers)],
+            tf.keras.layers.Dropout(dropout),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(units=4)
+        ])
 
-    # Compile the model
-    # 'mean_squared_error'
-    model.compile(optimizer='adam', loss='mean_squared_error')
+        # Compile the model
+        # 'mean_squared_error'
+        model.compile(optimizer='adam', loss='mean_squared_error')
 
-    # Train the model
-    model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=batchsize, validation_split=0.2, verbose=2)
+        # Train the model
+        model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=batchsize, validation_split=0.2, verbose=2)
 
     # return loss
     loss_list = model_loss.history["loss"]
