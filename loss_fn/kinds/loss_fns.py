@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Any, Union
 from jax import numpy as jnp
 
 
@@ -163,5 +163,6 @@ loss_fns = {
 }
 
 
-def lookup_loss_fn(key: str) -> Callable[[Callable, jnp.ndarray], jnp.ndarray]:
+def lookup_loss_fn(key: str) -> Union[
+    Callable[[Callable, jnp.ndarray], jnp.ndarray], Callable[[Callable, jnp.ndarray, Any], jnp.ndarray]]:
     return loss_fns[key]

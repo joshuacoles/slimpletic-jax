@@ -50,7 +50,7 @@ def make_solver(system: PhysicalSystem, iterations: int):
 
 
 @dataclasses.dataclass
-class System:
+class GradientDescentBundle:
     physical_system: PhysicalSystem
     family: Family
     loss_fn: Callable
@@ -63,7 +63,7 @@ class System:
 
 def create_system(
         physical_system: Union[PhysicalSystem, dict, str],
-        loss_fn: Union[Callable, str],
+        loss_fn: Union[Callable, dict, str],
         timesteps: int
 ):
     if isinstance(physical_system, str):
@@ -73,13 +73,18 @@ def create_system(
     elif not isinstance(physical_system, PhysicalSystem):
         raise
 
-    if isinstance(loss_fn, str):
-        loss_fn = lookup_loss_fn(loss_fn)
-
     t, solve = make_solver(physical_system, timesteps)
-    loss_fn = loss_fn(solve, physical_system.true_embedding)
 
-    return System(
+    if isinstance(loss_fn, str):
+        make_loss_fn = lookup_loss_fn(loss_fn)
+        loss_fn = make_loss_fn(solve, physical_system.true_embedding)
+    elif isinstance(loss_fn, dict):
+        make_loss_fn = lookup_loss_fn(loss_fn['key'])
+        loss_fn = make_loss_fn(solve, physical_system.true_embedding, loss_fn['config'])
+    elif isinstance(loss_fn, Callable):
+        loss_fn = loss_fn(solve, physical_system.true_embedding)
+
+    return GradientDescentBundle(
         physical_system=physical_system,
         family=physical_system.family,
         loss_fn=jit(loss_fn),
