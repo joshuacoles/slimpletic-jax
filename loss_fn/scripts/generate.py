@@ -27,9 +27,13 @@ args = sys.argv
 if len(args) > 1:
     system_key = args[1]
     loss_fn_key = args[2]
+    samples = int(args[3])
+    maxiter = int(args[4])
 else:
     system_key = systems.shm
     loss_fn_key = loss_fns.q_rms_embedding_norm_huber
+    samples = 5
+    maxiter = 200
 
 system = create_system(
     physical_system=system_key,
@@ -37,8 +41,6 @@ system = create_system(
     timesteps=100
 )
 
-maxiter = 200
-samples = 5
 verbose = False
 
 batch = datetime.datetime.now().isoformat()
