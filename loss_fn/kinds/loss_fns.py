@@ -92,7 +92,6 @@ def q_rms_embedding_norm_huber(solve: Callable, true_embedding: jnp.ndarray):
     return loss_fn
 
 
-
 def q_only_with_embedding_norm_and_reverse_linear_weights(solve: Callable, true_embedding: jnp.ndarray):
     """
     - Only care about q
@@ -150,3 +149,19 @@ def make_embedding_rms(_solve: Callable, true_embedding: jnp.ndarray):
         return rms(embedding, true_embedding)
 
     return loss_fn
+
+
+loss_fns = {
+    'rms_both': make_rms_both,
+    'q_only_linear_weighted': q_only_linear_weighted,
+    'embedding_rms': make_embedding_rms,
+    'q_and_pi_with_embedding_norm': q_and_pi_with_embedding_norm,
+    'q_only_with_embedding_norm_and_reverse_linear_weights': q_only_with_embedding_norm_and_reverse_linear_weights,
+    'q_rms_embedding_norm_huber': q_rms_embedding_norm_huber,
+    'q_only_with_embedding_norm': q_only_with_embedding_norm,
+    'q_only': q_only,
+}
+
+
+def lookup_loss_fn(key: str) -> Callable[[Callable, jnp.ndarray], jnp.ndarray]:
+    return loss_fns[key]

@@ -1,5 +1,4 @@
 import dataclasses
-import json
 from typing import Callable, Union
 
 import numpy as np
@@ -8,9 +7,8 @@ from jax import numpy as jnp, jit
 from slimpletic import GGLBundle, SolverScan, DiscretisedSystem
 
 from ..kinds.families import Family
-import pathlib
-
-from ..kinds.systems import PhysicalSystem
+from ..kinds.systems import PhysicalSystem, lookup_system
+from ..kinds.loss_fns import lookup_loss_fn
 
 
 def make_solver(system: PhysicalSystem, iterations: int):
@@ -64,18 +62,19 @@ class System:
 
 
 def create_system(
-        physical_system: Union[PhysicalSystem, str],
+        physical_system: Union[PhysicalSystem, dict, str],
         loss_fn: Union[Callable, str],
         timesteps: int
 ):
-    import loss_fn.kinds.systems as physical_systems
-    import loss_fn.kinds.loss_fns as loss_fns
-
     if isinstance(physical_system, str):
-        physical_system = getattr(physical_systems, physical_system)
+        physical_system = lookup_system(physical_system)
+    elif isinstance(physical_system, dict):
+        physical_system = PhysicalSystem.from_json(physical_system)
+    elif not isinstance(physical_system, PhysicalSystem):
+        raise
 
     if isinstance(loss_fn, str):
-        loss_fn = getattr(loss_fns, loss_fn)
+        loss_fn = lookup_loss_fn(loss_fn)
 
     t, solve = make_solver(physical_system, timesteps)
     loss_fn = loss_fn(solve, physical_system.true_embedding)

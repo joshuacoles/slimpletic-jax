@@ -73,8 +73,7 @@ for i in tqdm(range(samples)):
             "iter_num": gradient_descent_result.state.iter_num.tolist(),
         },
         "keys": {
-            "system": system.physical_system.key,
-            "family": system.family.key,
+            "system": system.physical_system.to_json(),
             "loss_fn": system.loss_fn_key,
-        }
+        },
     }, open(f"{root}/{i}.json", "w"), indent=2)
