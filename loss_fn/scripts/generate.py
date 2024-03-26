@@ -30,7 +30,7 @@ if len(args) > 1:
     samples = int(args[3])
     maxiter = int(args[4])
 else:
-    system_key = systems.shm
+    system_key = systems.shm_prefactor
     loss_fn_key = loss_fns.q_rms_embedding_norm_huber
     samples = 5
     maxiter = 200
@@ -56,12 +56,16 @@ for i in tqdm(range(samples)):
     gradient_descent_result = gradient_descent.run(random_initial_embedding)
 
     embedding = gradient_descent_result.params
+    achieved_loss = system.loss_fn(embedding)
+
     tqdm.write(f"Found embedding: {embedding}")
+    tqdm.write(f"Loss found: {achieved_loss} vs true loss: {true_loss}")
+    tqdm.write(f"Iterations: {gradient_descent_result.state.iter_num}")
     json.dump({
         "initial_embedding": random_initial_embedding.tolist(),
         "found_embedding": embedding.tolist(),
         "true_embedding": system.true_embedding.tolist(),
-        "loss": float(system.loss_fn(embedding)),
+        "loss": float(achieved_loss),
         "true_loss": float(true_loss),
         "maxiter": maxiter,
         "timesteps": system.timesteps,
