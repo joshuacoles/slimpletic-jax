@@ -69,6 +69,7 @@ class LSTMModel(nn.Module):
 
     @nn.remat
     def __call__(self, x_batch):
+        print('x_batch shape:', x_batch.shape)
         x = x_batch
 
         # why do we do this here?
@@ -78,13 +79,21 @@ class LSTMModel(nn.Module):
             input_shape=x_batch.shape[1:],
         )
 
+        print('carry shape:', carry.shape)
+        print('hidden shape:', hidden.shape)
+
         (carry, hidden), x = self.lstm_layer((carry, hidden), x)
+        print('A x shape:', x.shape)
         x = x.flatten()
+        print('B x shape:', x.shape)
 
         x = self.dense1(x)
+        print('C x shape:', x.shape)
         x = nn.relu(x)
+        print('D x shape:', x.shape)
 
         x = self.dense2(x)
+        print('E x shape:', x.shape)
 
         return x
 
@@ -95,7 +104,7 @@ def mse(params, x_batched, y_batched):
     # Define the squared loss for a single pair (x,y)
     def squared_error(x, y):
         pred = model.apply(params, x)
-        return jnp.inner(y - pred, y - pred) / 2.0
+        return jnp.dot(y - pred, y - pred) / 2.0
 
     # Vectorize the previous to compute the average of the loss on all samples.
     return jnp.mean(jax.vmap(squared_error)(x_batched, y_batched), axis=0)
@@ -106,23 +115,20 @@ timesteps = 50
 dof = 1
 data_rng, params_rng = random.split(random.key(0), 2)
 
-# dummy_x = jnp.zeros((count, timesteps, 2 * dof))
-# x = random.uniform(data_rng, (4, 4))
-
 x_normalized, y_data, TSteps, datasize = loadData(XName, YName)
 
 x_normalized = x_normalized.astype(jnp.float32)
 y_data = y_data.astype(jnp.float32)
-dummy_x = jnp.zeros_like(x_normalized)
+dummy_x = jnp.zeros_like(x_normalized[0])
 
 model = LSTMModel(
-    lstm_features=32,
+    lstm_features=16,
     hidden_features=32,
     output_features=4,
 )
 
 params = model.init(params_rng, dummy_x)
-y = model.apply(params, x_normalized)
+y = model.apply(params, x_normalized[0])
 
 print('initialized parameter shapes:\n', jax.tree_util.tree_map(jnp.shape, flax.core.unfreeze(params)))
 print('output:\n', y)
@@ -132,7 +138,7 @@ tx = optax.adam(learning_rate=learning_rate)
 opt_state = tx.init(params)
 loss_grad_fn = jax.value_and_grad(mse)
 
-for i in range(101):
+for i in range(10 ** 4):
     loss_val, grads = loss_grad_fn(params, x_normalized, y_data)
     updates, opt_state = tx.update(grads, opt_state)
     params = optax.apply_updates(params, updates)
