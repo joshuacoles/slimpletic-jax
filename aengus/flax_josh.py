@@ -21,6 +21,7 @@ TIMESTEPS = 40
 EPOCHS = 2000
 TRAINING_TIMESTEPS = 12
 TRAINING_DATASIZE = 20480
+BATCH_SIZE = 128
 dataName = "HarmonicOscillator"
 
 
@@ -69,15 +70,15 @@ class LSTMModel(nn.Module):
         self.dense2 = nn.Dense(self.output_features)
 
     @nn.remat
-    def __call__(self, x_batch):
-        print('x_batch shape:', x_batch.shape)
-        x = x_batch
+    def __call__(self, x_element):
+        print('x_element shape:', x_element.shape)
+        x = x_element
 
         # why do we do this here?
         # x_batch has shape (batch, timesteps + 1, len(q) + len(pi))
         carry, hidden = self.lstm_layer.initialize_carry(
             rng=jax.random.PRNGKey(0),
-            input_shape=x_batch.shape[1:],
+            input_shape=x_element.shape[1:],
         )
         _, x = self.lstm_layer((carry, hidden), x)
 
@@ -130,7 +131,7 @@ y_data = y_data.astype(jnp.float32)
 dummy_x = jnp.zeros_like(x_normalized[0])
 
 model = LSTMModel(
-    lstm_features=16,
+    lstm_features=4,
     hidden_features=32,
     output_features=4,
 )
@@ -146,7 +147,7 @@ tx = optax.adam(learning_rate=learning_rate)
 opt_state = tx.init(params)
 loss_grad_fn = jax.value_and_grad(mse)
 
-for i in range(10 ** 4):
+for i in range(EPOCHS):
     loss_val, grads = loss_grad_fn(params, x_normalized, y_data)
     updates, opt_state = tx.update(grads, opt_state)
     params = optax.apply_updates(params, updates)
