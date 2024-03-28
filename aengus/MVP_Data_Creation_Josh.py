@@ -1,6 +1,8 @@
 import random
+from typing import Union
+
 import numpy as np
-from slimpletic import DiscretisedSystem, GGLBundle, SolverManual
+from slimpletic import DiscretisedSystem, GGLBundle, SolverScan
 import jax
 import jax.numpy as jnp
 
@@ -42,12 +44,12 @@ system = DiscretisedSystem(
     pass_additional_data=True,
 )
 
-solver = SolverManual(system)
+solver = SolverScan(system)
 
 
-
-def slimplecticSoln(timesteps,zero,loss = 0,coeffs = 0):
-    if loss == 0:
+def slimplecticSoln(timesteps: int, coeffs: Union[jnp.ndarray, None] = None):
+    data_gen = coeffs is None
+    if data_gen:
         coeffs = jnp.array(HarmonicOscillatorCoeffs())
 
     q_slim, pi_slim = solver.integrate(
@@ -59,7 +61,9 @@ def slimplecticSoln(timesteps,zero,loss = 0,coeffs = 0):
         result_orientation='coordinate'
     )
 
-    # adding noise:
-    q_slim += np.random.normal(0, abs(np.mean(q_slim.flatten()) / 500), np.shape(q_slim))
-    pi_slim += np.random.normal(0, abs(np.mean(pi_slim.flatten()) / 500), np.shape(pi_slim))
+    if data_gen:
+        # adding noise:
+        q_slim += np.random.normal(0, abs(np.mean(q_slim.flatten()) / 500), np.shape(q_slim))
+        pi_slim += np.random.normal(0, abs(np.mean(pi_slim.flatten()) / 500), np.shape(pi_slim))
+
     return q_slim, pi_slim, coeffs

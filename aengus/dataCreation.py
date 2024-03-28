@@ -15,9 +15,9 @@ def genData():
         if _ % 100 == 0:
             print(_)
         if _ <= DATASIZE / 2:
-            q, p, l = slimplecticSoln(TIMESTEPS, True)
+            q, p, l = slimplecticSoln(TIMESTEPS, None)
         else:
-            q, p, l = slimplecticSoln(TIMESTEPS, False)
+            q, p, l = slimplecticSoln(TIMESTEPS, None)
         q_data.append(q[0])
         pi_data.append(p[0])
         L_data.append(l)
