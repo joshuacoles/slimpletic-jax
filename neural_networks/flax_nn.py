@@ -109,10 +109,8 @@ class LSTMModel(nn.Module):
 def mse(params, x_batched, y_batched):
     # Define the squared loss for a single pair (x,y)
     def squared_error(x, y):
-        pred = model.apply(params, x)
-
-
-        return jnp.dot(y - pred, y - pred) / 2.0
+        predicted_embedding = model.apply(params, x)
+        return jnp.dot(y - predicted_embedding, y - predicted_embedding) / 2.0
 
     # Vectorize the previous to compute the average of the loss on all samples.
     return jnp.mean(jax.vmap(squared_error)(x_batched, y_batched), axis=0)
