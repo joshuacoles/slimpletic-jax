@@ -58,7 +58,7 @@ def loadData(XData, YData):
     return (X_normalized, Y, timestep_filter, datasize_filter)
 
 
-X, Y, timestep_filter, datasize_filter = loadData(XName, YName)
+# X, Y, timestep_filter, datasize_filter = loadData(XName, YName)
 
 
 def create_layer(units, regularizer):
