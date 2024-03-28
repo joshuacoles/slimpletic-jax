@@ -64,6 +64,7 @@ class LSTMModel(nn.Module):
                              reverse=False)
 
         self.lstm_layer = lstm_layer(features=self.lstm_features)
+        self.lstm_layer2 = lstm_layer(features=self.lstm_features)
         self.dense1 = nn.Dense(self.hidden_features)
         self.dense2 = nn.Dense(self.output_features)
 
@@ -78,11 +79,16 @@ class LSTMModel(nn.Module):
             rng=jax.random.PRNGKey(0),
             input_shape=x_batch.shape[1:],
         )
+        _, x = self.lstm_layer((carry, hidden), x)
 
-        print('carry shape:', carry.shape)
-        print('hidden shape:', hidden.shape)
+        # why do we do this here?
+        # x_batch has shape (batch, timesteps + 1, len(q) + len(pi))
+        carry, hidden = self.lstm_layer2.initialize_carry(
+            rng=jax.random.PRNGKey(0),
+            input_shape=x_batch.shape[1:],
+        )
+        _, x = self.lstm_layer2((carry, hidden), x)
 
-        (carry, hidden), x = self.lstm_layer((carry, hidden), x)
         print('A x shape:', x.shape)
         x = x.flatten()
         print('B x shape:', x.shape)
@@ -104,6 +110,8 @@ def mse(params, x_batched, y_batched):
     # Define the squared loss for a single pair (x,y)
     def squared_error(x, y):
         pred = model.apply(params, x)
+
+
         return jnp.dot(y - pred, y - pred) / 2.0
 
     # Vectorize the previous to compute the average of the loss on all samples.
