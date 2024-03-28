@@ -30,3 +30,13 @@ power_series_with_prefactor = Family(
                                                embedding[2] * (q[0] * v[0])),
     None
 )
+
+families = {
+    'dho': dho,
+    'basic_power_series': basic_power_series,
+    'power_series_with_prefactor': power_series_with_prefactor
+}
+
+
+def lookup_family(key: str) -> Family:
+    return families[key]

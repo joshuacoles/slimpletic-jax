@@ -31,7 +31,7 @@ if len(args) > 1:
     maxiter = int(args[4])
 else:
     system_key = systems.shm_prefactor
-    loss_fn_key = loss_fns.q_rms_embedding_norm_huber
+    loss_fn_key = loss_fns.q_rms_huber_embedding_norm
     samples = 5
     maxiter = 200
 
@@ -64,7 +64,6 @@ for i in tqdm(range(samples)):
     json.dump({
         "initial_embedding": random_initial_embedding.tolist(),
         "found_embedding": embedding.tolist(),
-        "true_embedding": system.true_embedding.tolist(),
         "loss": float(achieved_loss),
         "true_loss": float(true_loss),
         "maxiter": maxiter,
@@ -73,8 +72,7 @@ for i in tqdm(range(samples)):
             "iter_num": gradient_descent_result.state.iter_num.tolist(),
         },
         "keys": {
-            "system": system.physical_system.key,
-            "family": system.family.key,
+            "system": system.physical_system.to_json(),
             "loss_fn": system.loss_fn_key,
-        }
+        },
     }, open(f"{root}/{i}.json", "w"), indent=2)

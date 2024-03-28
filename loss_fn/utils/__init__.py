@@ -1,5 +1,4 @@
 import dataclasses
-import json
 from typing import Callable, Union
 
 import numpy as np
@@ -8,9 +7,8 @@ from jax import numpy as jnp, jit
 from slimpletic import GGLBundle, SolverScan, DiscretisedSystem
 
 from ..kinds.families import Family
-import pathlib
-
-from ..kinds.systems import PhysicalSystem
+from ..kinds.systems import PhysicalSystem, lookup_system
+from ..kinds.loss_fns import lookup_loss_fn
 
 
 def make_solver(system: PhysicalSystem, iterations: int):
@@ -52,7 +50,7 @@ def make_solver(system: PhysicalSystem, iterations: int):
 
 
 @dataclasses.dataclass
-class System:
+class GradientDescentBundle:
     physical_system: PhysicalSystem
     family: Family
     loss_fn: Callable
@@ -64,27 +62,36 @@ class System:
 
 
 def create_system(
-        physical_system: Union[PhysicalSystem, str],
-        loss_fn: Union[Callable, str],
+        physical_system: Union[PhysicalSystem, dict, str],
+        loss_fn: Union[Callable, dict, str],
         timesteps: int
 ):
-    import loss_fn.kinds.systems as physical_systems
-    import loss_fn.kinds.loss_fns as loss_fns
-
     if isinstance(physical_system, str):
-        physical_system = getattr(physical_systems, physical_system)
-
-    if isinstance(loss_fn, str):
-        loss_fn = getattr(loss_fns, loss_fn)
+        physical_system = lookup_system(physical_system)
+    elif isinstance(physical_system, dict):
+        physical_system = PhysicalSystem.from_json(physical_system)
+    elif not isinstance(physical_system, PhysicalSystem):
+        raise
 
     t, solve = make_solver(physical_system, timesteps)
-    loss_fn = loss_fn(solve, physical_system.true_embedding)
 
-    return System(
+    if isinstance(loss_fn, str):
+        loss_fn_key = loss_fn
+        make_loss_fn = lookup_loss_fn(loss_fn)
+        loss_fn = make_loss_fn(solve, physical_system.true_embedding)
+    elif isinstance(loss_fn, dict):
+        loss_fn_key = loss_fn['key']
+        make_loss_fn = lookup_loss_fn(loss_fn['key'])
+        loss_fn = make_loss_fn(solve, physical_system.true_embedding, loss_fn['config'])
+    elif isinstance(loss_fn, Callable):
+        loss_fn_key = loss_fn.__name__
+        loss_fn = loss_fn(solve, physical_system.true_embedding)
+
+    return GradientDescentBundle(
         physical_system=physical_system,
         family=physical_system.family,
         loss_fn=jit(loss_fn),
-        loss_fn_key=loss_fn.__name__,
+        loss_fn_key=loss_fn_key,
         true_embedding=physical_system.true_embedding,
         t=t,
         solve=solve,
