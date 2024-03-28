@@ -22,6 +22,7 @@ def genData():
         pi_data.append(p[0])
         L_data.append(l)
 
+    # (Number of trajectories, Number of timesteps, 2)
     X = np.array([q_data, pi_data]).reshape((DATASIZE, TIMESTEPS + 1, 2))
     Y = np.array(L_data)
     return X, Y
