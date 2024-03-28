@@ -8,10 +8,6 @@ import jax.numpy as jnp
 from neural_networks.data.families import Family
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
-# The root directory where the data will be stored, $PROJECT_ROOT/data/nn_data
-data_root = Path(__file__).parent.parent.parent.joinpath('data/nn_data')
-
-
 def setup_solver(family: Family, iterations: int) -> Callable[[jnp.ndarray, jnp.ndarray, jnp.ndarray], jnp.ndarray]:
     t0 = 0
     dt = 0.1
