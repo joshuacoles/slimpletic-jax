@@ -1,15 +1,53 @@
 from typing import Sequence
-
 import jax
-from jax import config
-config.update("jax_enable_x64", True)
-import numpy as np
-from jax import random, numpy as jnp
-
 import flax
-from flax import linen as nn
 import optax
-from aengus.test_MMVP import loadData
+
+from jax import random, numpy as jnp
+from jax import config
+from flax import linen as nn
+
+config.update("jax_enable_x64", True)
+
+dataName = "HarmonicOscillator"
+XName = "Data/" + dataName + "/xData.npy"
+YName = "Data/" + dataName + "/yData.npy"
+
+# Data Variables: Do not change unless data is regenerated
+DATASIZE = 20480
+TIMESTEPS = 40
+
+# Training Variables: Can be changed
+EPOCHS = 2000
+TRAINING_TIMESTEPS = 12
+TRAINING_DATASIZE = 20480
+dataName = "HarmonicOscillator"
+
+
+def loadData(XData, YData):
+    X = jnp.load(XData)
+    Y = jnp.load(YData)
+
+    # Selecting first TRAINING_TIMESTEPS amount of time series data
+    if TRAINING_TIMESTEPS < TIMESTEPS:
+        timestep_filter = TRAINING_TIMESTEPS
+    else:
+        timestep_filter = TIMESTEPS
+    if TRAINING_DATASIZE > 0 and TRAINING_DATASIZE < DATASIZE:
+        datasize_filter = TRAINING_DATASIZE
+    else:
+        datasize_filter = DATASIZE
+
+    X = X[:datasize_filter, :timestep_filter + 1, :]
+    Y = Y[:datasize_filter, :]
+
+    # Data Normalization
+    mean_X, std_X = jnp.mean(X), jnp.std(X)
+    X_normalized = (X - mean_X) / std_X
+
+    print(X_normalized.shape, Y.shape)
+
+    return (X_normalized, Y, timestep_filter, datasize_filter)
 
 
 class LSTMModel(nn.Module):
@@ -71,10 +109,7 @@ data_rng, params_rng = random.split(random.key(0), 2)
 # dummy_x = jnp.zeros((count, timesteps, 2 * dof))
 # x = random.uniform(data_rng, (4, 4))
 
-x_normalized, y_data, timestep_filter, datasize_filter = loadData(
-    '/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/aengus/Data/HarmonicOscillator/xData.npy',
-    '/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/aengus/Data/HarmonicOscillator/yData.npy'
-)
+x_normalized, y_data, TSteps, datasize = loadData(XName, YName)
 
 x_normalized = x_normalized.astype(jnp.float32)
 y_data = y_data.astype(jnp.float32)
