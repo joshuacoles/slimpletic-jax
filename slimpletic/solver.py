@@ -296,6 +296,7 @@ class SolverBatchedScan(Solver):
         pi_previous = pi0
 
         for i in range(int(number_of_batches)):
+            print("batch", i, time.time_ns())
             (q_previous, pi_previous), (q, pi) = self._integrate_inner_batch(
                 carry=(q_previous, pi_previous),
                 ts=t_samples_batched[i],

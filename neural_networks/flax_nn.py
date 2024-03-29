@@ -87,6 +87,8 @@ def mse(params, x_batched, y_batched):
         diff = true_q - predicted_q
         diff_scalars = jax.vmap(jnp.linalg.norm)(diff)
 
+        jax.debug.print("diff_scalars: {}", diff_scalars)
+
         return jnp.inner(diff_scalars, diff_scalars) / 2.0
 
     # Vectorize the previous to compute the average of the loss on all samples.
