@@ -1,12 +1,18 @@
+import jax
 import numpy as np
 import tensorflow as tf
-from .MVP_Data_Creation_Josh import slimplecticSoln
+import jax.numpy as jnp
+
+from neural_networks.data.families import aengus_original
+from neural_networks.data.generate_data_impl import setup_solver
 import matplotlib.pyplot as plt
 
+strategy = tf.distribute.MirroredStrategy()
+
 # Training Variables: Can be changed
-EPOCHS = 2000
+EPOCHS = 20
 TRAINING_TIMESTEPS = 12
-TRAINING_DATASIZE = 20480
+TRAINING_DATASIZE = 2
 dataName = "HarmonicOscillator"
 
 XName = "Data/" + dataName + "/xData.npy"
@@ -16,23 +22,43 @@ YName = "Data/" + dataName + "/yData.npy"
 DATASIZE = 20480
 TIMESTEPS = 40
 
+solve = setup_solver(
+    family=aengus_original,
+    iterations=TIMESTEPS
+)
+
+"""
+def solve_wrapper(y_pred, y_true):
+    def solve_numpy(y_pred_numpy, y_true_numpy):
+        # Your solve function implementation here
+        return solve(y_pred_numpy, y_true_numpy)
+
+    solved = tf.py_function(solve_numpy, [y_pred, y_true], tf.float32)
+    return solved
+"""
+
+
+def solveWrap(y_elem):
+    solved = tf.py_function(
+        solve,
+        [y_elem, jnp.array([1.0]), jnp.array([1.0])],
+        Tout=tf.float32
+    )
+    return solved
+
 
 def custom_loss(y_True, y_Pred):
-    ypnp = y_Pred.numpy()
-    ytnp = y_True.numpy()
-    print(ypnp[0])
-    print(y_True.shape)
     totalLoss = 0
 
-    for index in range(0, ypnp.shape[0]):
-        qP = slimplecticSoln(TIMESTEPS, ypnp[index])[0]
-        qT = slimplecticSoln(TIMESTEPS, ytnp[index])[0]
+    for index in range(0, y_True.shape[0]):
+        qP = solve(jnp.array(y_Pred[index], dtype=jnp.float32), jnp.array([1.0]), jnp.array([1.0]))[0]
+        qT = solve(jnp.array(y_True[index], dtype=jnp.float32), jnp.array([1.0]), jnp.array([1.0]))[0]
 
         # RMS of the true vs predicted q values
         totalLoss += np.sqrt(np.sum((qT - qP) ** 2))
 
     print(f"ALPHA Returning loss {totalLoss}")
-    return totalLoss / (ypnp.shape[0])
+    return totalLoss / (y_True.shape[0])
 
 
 def loadData(XData, YData):
@@ -74,6 +100,22 @@ def create_layer(units, regularizer, i):
                                     return_sequences=True)
 
 
+def create_model(layers: int, units: list, regulariser: list, dropout: float):
+    """
+    :param layers:
+    :param units:
+    :param regulariser:
+    :param dropout:
+    :return:
+    """
+    model = tf.keras.Sequential([
+        *[create_layer(units, regulariser, i + 4 - layers) for i in range(layers)],
+        tf.keras.layers.Dropout(dropout),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(units=4)
+    ])
+    return model
+
 def runModel(layers: int, units: list, regulariser: list, dropout: float, batchsize: int):
     """
     :param layers: int identifying the number of layers
@@ -83,27 +125,51 @@ def runModel(layers: int, units: list, regulariser: list, dropout: float, batchs
     :param batchsize: 64,128,256 are usual values
     :return: Loss and ValLoss Lists indexed by Epoch
     """
+    with strategy.scope():
+        test_loss = tf.keras.metrics.Mean(name='test_loss')
 
-    # Model Definition
-    model = tf.keras.Sequential([
-        *[create_layer(units, regulariser, i + 4 - layers) for i in range(layers)],
-        tf.keras.layers.Dropout(dropout),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(units=4)
-    ])
+        train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
+            name='train_accuracy')
+        test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
+            name='test_accuracy')
+
+    with strategy.scope():
+        model = create_model(layers, units, regulariser, dropout)
+
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+
+        checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
+
+    def loss_and_grads(params, X, Y):
+        predictions = model(X, training=True)
+        loss = custom_loss(Y, predictions)
+        return loss, jax.grad(lambda params: loss)(params)
+    def train_step(X,Y):
+        print(type(model.trainable_variables[0]))
+        loss, gradients = jax.value_and_grad(loss_and_grads)(model.trainable_variables,X,Y)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        train_accuracy.update_state(Y, predictions)
+        return loss
+
+
+    train_step(X,Y)
+
+
+
+
 
     # Compile the model
     # 'mean_squared_error'
-    model.compile(optimizer='adam', loss=custom_loss, run_eagerly=True)
+    #model.compile(optimizer='adam', loss=custom_loss, run_eagerly=True)
 
     # Train the model
-    model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=batchsize, validation_split=0.2, verbose=2)
+    #model_loss = model.fit(X, Y, epochs=EPOCHS, batch_size=batchsize, validation_split=0.2, verbose=2)
 
     # return loss
-    loss_list = model_loss.history["loss"]
-    val_loss_list = model_loss.history["val_loss"]
+    #loss_list = model_loss.history["loss"]
+    #val_loss_list = model_loss.history["val_loss"]
 
-    return loss_list, val_loss_list
+    #return loss_list, val_loss_list
 
 
 if __name__ == "__main__":
