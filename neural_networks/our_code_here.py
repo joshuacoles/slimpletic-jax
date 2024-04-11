@@ -3,8 +3,18 @@ from typing import Callable
 import numpy as np
 import tensorflow as tf
 
+import model_creation
+import our_loss_fn
+
 
 def get_model() -> keras.Model:
+    model_creation.create_model(
+        layers=1,
+        units=[5, 5, 5, 5],
+        regulariser=[1, 1, 1, 1],
+        dropout=0.2,
+    )
+
     inputs = keras.Input(shape=(784,), name="digits")
     x1 = keras.layers.Dense(64, activation="relu")(inputs)
     x2 = keras.layers.Dense(64, activation="relu")(x1)
@@ -14,16 +24,17 @@ def get_model() -> keras.Model:
 
 
 def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-    x_train = np.reshape(x_train, (-1, 784)).astype("float32")
-    x_test = np.reshape(x_test, (-1, 784)).astype("float32")
-    y_train = keras.utils.to_categorical(y_train)
-    y_test = keras.utils.to_categorical(y_test)
     # Reserve 10,000 samples for validation.
-    x_val = x_train[-10000:]
-    y_val = y_train[-10000:]
-    x_train = x_train[:-10000]
-    y_train = y_train[:-10000]
+    validation_cutoff = 10000
+
+    x_train = np.load("/Users/joshuacoles/Developer/checkouts/fyp/nn-take-2/Data/HarmonicOscillator/xData.npy")
+    y_train = np.load("/Users/joshuacoles/Developer/checkouts/fyp/nn-take-2/Data/HarmonicOscillator/yData.npy")
+
+    x_val = x_train[-validation_cutoff:]
+    y_val = y_train[-validation_cutoff:]
+    x_train = x_train[:-validation_cutoff]
+    y_train = y_train[:-validation_cutoff]
+
     # Prepare the training dataset.
     train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
@@ -35,11 +46,4 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
 
 
 def get_loss_fn() -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
-    """
-    Returns a fn of the form:
-
-        def loss_fn(y_true, y_pred):
-            return loss
-    """
-    # Instantiate a loss function.
-    return keras.losses.CategoricalCrossentropy(from_logits=True)
+    return our_loss_fn.loss_fn
