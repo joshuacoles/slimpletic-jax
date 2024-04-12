@@ -42,7 +42,7 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
     :return:
     """
     model = keras.Sequential([
-        *[create_layer(units[i + 4 - layers], regulariser[i + 4 - layers] == 1) for i in range(layers)],
+        *[create_layer(units[-i], regulariser[-i] == 1) for i in range(layers)],
         keras.layers.Dropout(dropout),
         keras.layers.Flatten(),
         keras.layers.Dense(units=family.embedding_shape[0])
