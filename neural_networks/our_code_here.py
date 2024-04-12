@@ -4,8 +4,9 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import tensorflow as tf
-from neural_networks.data.families import aengus_original
+from neural_networks.data.families import aengus_original, dho
 from neural_networks.data.generate_data_impl import setup_solver
+from .data import load_nn_data
 
 # Training Variables: Can be changed
 EPOCHS = 20
@@ -18,7 +19,7 @@ TIMESTEPS = 40
 
 # Solver
 solve = setup_solver(
-    family=aengus_original,
+    family=dho,
     iterations=TIMESTEPS
 )
 

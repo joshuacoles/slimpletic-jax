@@ -2,18 +2,18 @@ import jax.numpy as jnp
 import jax.random
 
 from neural_networks.data import nn_data_path, save_nn_data
-from neural_networks.data.families import power_series_with_prefactor
+from neural_networks.data.families import power_series_with_prefactor, aengus_original, dho
 from neural_networks.data.generate_data_impl import setup_solver
 
-timesteps = 12
-count = 2048 * 10
+timesteps = 40
+count = 20000 * 10
 
 # Change this for different random seeds
 rng_seed = 0
 rng = jax.random.PRNGKey(rng_seed)
 
 # The family is the kind of system we are generating
-family = power_series_with_prefactor
+family = dho
 solver = setup_solver(
     family=family,
     iterations=timesteps,
