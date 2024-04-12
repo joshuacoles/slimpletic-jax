@@ -43,4 +43,7 @@ families = {
 
 
 def lookup_family(key: str) -> Family:
-    return families[key]
+    try:
+        return families[key]
+    except KeyError:
+        raise KeyError(f"Family {key} not found")

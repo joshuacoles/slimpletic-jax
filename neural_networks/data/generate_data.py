@@ -1,8 +1,7 @@
 import jax.numpy as jnp
 import jax.random
-import time
 
-from neural_networks.data import nn_data_path
+from neural_networks.data import nn_data_path, save_nn_data
 from neural_networks.data.families import power_series_with_prefactor
 from neural_networks.data.generate_data_impl import setup_solver
 
@@ -10,7 +9,8 @@ timesteps = 12
 count = 2048 * 10
 
 # Change this for different random seeds
-rng = jax.random.PRNGKey(0)
+rng_seed = 0
+rng = jax.random.PRNGKey(rng_seed)
 
 # The family is the kind of system we are generating
 family = power_series_with_prefactor
@@ -20,7 +20,7 @@ solver = setup_solver(
 )
 
 # Choose a name for the population you are generating
-population_name = 'pure_normal'
+population_name = f"pure_normal-{rng_seed}"
 
 
 def generate_population():
@@ -40,10 +40,12 @@ pi0 = jnp.repeat(jnp.array([1.0], dtype=jnp.float64)[jnp.newaxis, :], axis=0, re
 
 # Generate trajectories for each embedding
 trajectories = jax.vmap(solver)(lagrangian_embeddings, q0, pi0)
-x_data = jnp.concat([trajectories[0], trajectories[1]], axis=-1)
+trajectory_data = jnp.concatenate([trajectories[0], trajectories[1]], axis=-1)
 
 # Write the data to a consistent location
-data_dir = nn_data_path(family.key, population_name)
-data_dir.mkdir(parents=True, exist_ok=True)
-jnp.save(data_dir.joinpath("x"), x_data)
-jnp.save(data_dir.joinpath("y"), lagrangian_embeddings)
+save_nn_data(
+    family,
+    population_name,
+    trajectory_data,
+    lagrangian_embeddings
+)
