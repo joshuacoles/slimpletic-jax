@@ -1,6 +1,5 @@
 import keras
 from typing import Callable
-import numpy as np
 import jax
 import jax.numpy as jnp
 import tensorflow as tf
@@ -91,8 +90,8 @@ def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
 def loss_fn(y_true: jnp.ndarray, y_predicated: jnp.ndarray) -> jnp.ndarray:
     return jax.lax.fori_loop(
         0, y_true.shape[0],
-        lambda index, total_loss: total_loss + np.sqrt(
-            np.sum((wrapped_solve(y_true[index]) - wrapped_solve(y_predicated)) ** 2)),
+        lambda index, total_loss: total_loss + jnp.sqrt(
+            jnp.sum((wrapped_solve(y_true[index]) - wrapped_solve(y_predicated)) ** 2)),
         0
     )
 
