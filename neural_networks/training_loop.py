@@ -4,7 +4,6 @@ import os
 os.environ["KERAS_BACKEND"] = "jax"
 
 import jax
-
 import keras
 from our_code_here import get_data, get_loss_fn, get_model
 
