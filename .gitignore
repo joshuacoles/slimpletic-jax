@@ -4,3 +4,4 @@
 .pytest_cache
 #*.npy
 data/loss_fns
+data/nn_data
