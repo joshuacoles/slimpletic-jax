@@ -5,13 +5,12 @@ os.environ["KERAS_BACKEND"] = "jax"
 
 import jax
 import keras
-from our_code_here import get_data, get_loss_fn, get_model
+from our_code_here import get_data, loss_fn, get_model
 
 # Prepare the training dataset.
 batch_size = 32
 
 train_dataset, val_dataset = get_data(batch_size)
-loss_fn = get_loss_fn()
 model = get_model()
 
 # Instantiate an optimizer to train the model.
@@ -28,7 +27,10 @@ def compute_loss_and_updates(
     y_pred, non_trainable_variables = model.stateless_call(
         trainable_variables, non_trainable_variables, x
     )
-    loss = loss_fn(y, y_pred)
+    loss = loss_fn(
+        true_trajectory=x,
+        y_predicted=y_pred
+    )
     metric_variables = train_acc_metric.stateless_update_state(
         metric_variables, y, y_pred
     )
@@ -69,7 +71,12 @@ def eval_step(state, data):
     y_pred, non_trainable_variables = model.stateless_call(
         trainable_variables, non_trainable_variables, x
     )
-    loss = loss_fn(y, y_pred)
+
+    loss = loss_fn(
+        true_trajectory=x,
+        y_predicted=y_pred
+    )
+
     metric_variables = val_acc_metric.stateless_update_state(
         metric_variables, y, y_pred
     )
@@ -108,6 +115,8 @@ for step, data in enumerate(train_dataset):
         print(f"Seen so far: {(step + 1) * batch_size} samples")
 
 metric_variables = val_acc_metric.variables
+
+print(metric_variables)
 
 (
     trainable_variables,

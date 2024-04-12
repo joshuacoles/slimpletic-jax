@@ -90,16 +90,9 @@ def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
 vmapped_solve = jax.vmap(fun=wrapped_solve, in_axes=(0,), )
 
 
-def loss_fn(y_true: jnp.ndarray, y_predicated: jnp.ndarray) -> jnp.ndarray:
-    return jnp.sqrt(jnp.sum((vmapped_solve(y_true) - vmapped_solve(y_predicated)) ** 2))
+def loss_fn(true_trajectory: jnp.ndarray, y_predicted: jnp.ndarray) -> jnp.ndarray:
+    q_predicted = vmapped_solve(y_predicted)
+    q_true = true_trajectory[:, :, 0]
 
-
-def get_loss_fn() -> Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]:
-    """
-    Returns a fn of the form:
-
-        def loss_fn(y_true, y_pred):
-            return loss
-    """
-    # Instantiate a loss function.
-    return loss_fn
+    residuals = jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2)
+    return jnp.sqrt(residuals)

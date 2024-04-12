@@ -8,6 +8,7 @@ import jax.numpy as jnp
 from neural_networks.data.families import Family
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
+
 def setup_solver(family: Family, iterations: int) -> Callable[[jnp.ndarray, jnp.ndarray, jnp.ndarray], jnp.ndarray]:
     t0 = 0
     dt = 0.1
