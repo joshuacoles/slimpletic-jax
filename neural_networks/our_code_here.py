@@ -1,16 +1,61 @@
 import keras
 from typing import Callable
 import numpy as np
+import jax
+import jax.numpy as jnp
 import tensorflow as tf
+from neural_networks.data.families import aengus_original
+from neural_networks.data.generate_data_impl import setup_solver
+
+# Training Variables: Can be changed
+EPOCHS = 20
+TRAINING_TIMESTEPS = 12
+TRAINING_DATASIZE = 2
+
+# Data Variables: Do not change unless data is regenerated
+DATASIZE = 20480
+TIMESTEPS = 40
+
+# Solver
+solve = setup_solver(
+    family=aengus_original,
+    iterations=TIMESTEPS
+)
+
+
+def create_layer(units, regularizer, i):
+    if regularizer[i] == 1:
+        return keras.layers.LSTM(units=units[i], input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                                 return_sequences=True,
+                                 kernel_regularizer=keras.regularizers.L1L2())
+    else:
+        return keras.layers.LSTM(units=units[i], input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                                 return_sequences=True)
+
+
+def create_model(layers: int, units: list, regulariser: list, dropout: float):
+    """
+    :param layers:
+    :param units:
+    :param regulariser:
+    :param dropout:
+    :return:
+    """
+    model = tf.keras.Sequential([
+        *[create_layer(units, regulariser, i + 4 - layers) for i in range(layers)],
+        keras.layers.Dropout(dropout),
+        keras.layers.Flatten(),
+        keras.layers.Dense(units=4)
+    ])
+    return model
 
 
 def get_model() -> keras.Model:
-    inputs = keras.Input(shape=(784,), name="digits")
-    x1 = keras.layers.Dense(64, activation="relu")(inputs)
-    x2 = keras.layers.Dense(64, activation="relu")(x1)
-    outputs = keras.layers.Dense(10, name="predictions")(x2)
-    model = keras.Model(inputs=inputs, outputs=outputs)
-    return model
+    layers = 3
+    units = [20, 15, 10, 5]
+    regulariser = [1, 1, 1, 1]
+    dropout = 0.25
+    return create_model(layers, units, regulariser, dropout)
 
 
 def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
@@ -33,8 +78,20 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
 
     return train_dataset, val_dataset
 
+def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
+    return solve(
+        embedding,
+        jnp.array([1.0]), jnp.array([1.0])
+    )[0]
+def loss_fn(y_true: jnp.ndarray, y_predicated: jnp.ndarray) -> jnp.ndarray:
+    return jax.lax.fori_loop(
+        0, y_true.shape[0],
+        lambda index, total_loss: total_loss + np.sqrt(
+            np.sum((wrapped_solve(y_true[index]) - wrapped_solve(y_predicated)) ** 2)),
+        0
+    )
 
-def get_loss_fn() -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+def get_loss_fn() -> Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]:
     """
     Returns a fn of the form:
 
@@ -42,4 +99,4 @@ def get_loss_fn() -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
             return loss
     """
     # Instantiate a loss function.
-    return keras.losses.CategoricalCrossentropy(from_logits=True)
+    return loss_fn
