@@ -30,12 +30,12 @@ def save_nn_data(
     jnp.save(data_dir.joinpath("y"), lagrangian_embeddings)
 
 
-def load_data(
+def load_nn_data(
         family: Union[Family, str],
         population_name: str
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
-    Load the data for a given family and population name.
+    Load the data for a given family and population name. Will overwrite the data if it already exists.
     """
     family = family if isinstance(family, Family) else lookup_family(family)
     data_dir = nn_data_path(family.key, population_name)
