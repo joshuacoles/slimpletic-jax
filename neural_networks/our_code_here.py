@@ -62,7 +62,7 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     validation_cutoff = 10000
 
     x_train, y_train = load_nn_data(family, dataName)
-    x_train = x_train[:,:TRAINING_TIMESTEPS+1,:]
+    x_train = x_train[:, :TRAINING_TIMESTEPS + 1, :]
 
     x_val = x_train[-validation_cutoff:]
     y_val = y_train[-validation_cutoff:]
@@ -87,13 +87,11 @@ def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
     )[0]
 
 
+vmapped_solve = jax.vmap(fun=wrapped_solve, in_axes=(0,), )
+
+
 def loss_fn(y_true: jnp.ndarray, y_predicated: jnp.ndarray) -> jnp.ndarray:
-    return jax.lax.fori_loop(
-        0, y_true.shape[0],
-        lambda index, total_loss: total_loss + jnp.sqrt(
-            jnp.sum((wrapped_solve(y_true[index]) - wrapped_solve(y_predicated)) ** 2)),
-        0
-    )
+    return jnp.sqrt(jnp.sum((vmapped_solve(y_true) - vmapped_solve(y_predicated)) ** 2))
 
 
 def get_loss_fn() -> Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]:
