@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Union
 
+import jax
+
 
 @dataclass
 class Family:
@@ -35,10 +37,20 @@ power_series_with_prefactor = Family(
     (4,)
 )
 
+aengus_original = Family(
+    'aengus_original',
+    lambda q, v, _, an: jax.lax.fori_loop(0, 2,
+                             lambda i, acc: acc + (an[2 * i] * q[0] ** (i + 1)) + (an[2 * i + 1] * v[0] ** (i + 1)),
+                             0.0),
+    None,
+    (4, )
+)
+
 families = {
     'dho': dho,
     'basic_power_series': basic_power_series,
-    'power_series_with_prefactor': power_series_with_prefactor
+    'power_series_with_prefactor': power_series_with_prefactor,
+    'aengus_original': aengus_original,
 }
 
 
