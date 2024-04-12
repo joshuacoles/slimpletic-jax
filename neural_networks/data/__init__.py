@@ -18,21 +18,39 @@ def save_nn_data(
         family: Union[Family, str],
         population_name: str,
         trajectories,
-        lagrangian_embeddings
+        lagrangian_embeddings,
+        filter_bad_data: bool = True
 ):
     family_key = family.key if isinstance(family, Family) else family
 
     data_dir = nn_data_path(family_key, population_name)
     data_dir.mkdir(parents=True, exist_ok=True)
 
+    if filter_bad_data:
+        trajectories, lagrangian_embeddings = filter_bad_trajectories(trajectories, lagrangian_embeddings)
+
     verify_data_integrity(family, trajectories, lagrangian_embeddings)
     jnp.save(data_dir.joinpath("x"), trajectories)
     jnp.save(data_dir.joinpath("y"), lagrangian_embeddings)
 
 
+def filter_bad_trajectories(x, y):
+    """
+    Filter out rows with infinite or NaN values from the data.
+    """
+    # Find the row indices of rows containing infinite values
+    row_indices = jnp.where(jnp.any(jnp.isinf(x) | jnp.isnan(x), axis=1))[0]
+
+    # Create a boolean mask for rows to keep (rows without infinite values)
+    x_mask = jnp.ones(x.shape[0], dtype=bool).at[row_indices].set(False)
+    y_mask = jnp.ones(y.shape[0], dtype=bool).at[row_indices].set(False)
+
+    return x[x_mask], y[y_mask]
+
+
 def load_nn_data(
         family: Union[Family, str],
-        population_name: str
+        population_name: str,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Load the data for a given family and population name. Will overwrite the data if it already exists.
@@ -41,10 +59,12 @@ def load_nn_data(
     data_dir = nn_data_path(family.key, population_name)
 
     if not data_dir.exists():
-        if data_dir.joinpath(family.key).exists():
+        family_root = nn_data_root.joinpath(family.key)
+
+        if family_root.exists():
             print(f"No such population {population_name} for {family.key}", file=sys.stderr)
             print(f"Existing populations: ", file=sys.stderr)
-            for population_dir in data_dir.iterdir():
+            for population_dir in family_root.iterdir():
                 print(f"\t '{population_dir.name}'", file=sys.stderr)
             raise FileNotFoundError(f"No such population {population_name} for {family.key}")
         else:
@@ -52,7 +72,7 @@ def load_nn_data(
             print(f"Existing families: ", file=sys.stderr)
             for family_dir in nn_data_root.iterdir():
                 print(f"\t '{family_dir.name}'", file=sys.stderr)
-            raise FileNotFoundError(f"No such family {family.key}")
+            raise FileNotFoundError(f"No data for family: '{family.key}'")
 
     x_data = jnp.load(data_dir.joinpath("x.npy"))
     y_data = jnp.load(data_dir.joinpath("y.npy"))

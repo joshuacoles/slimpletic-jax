@@ -1,5 +1,4 @@
 import keras
-from typing import Callable
 import jax
 import jax.numpy as jnp
 import tensorflow as tf
@@ -7,7 +6,7 @@ from neural_networks.data.families import aengus_original, dho
 from neural_networks.data.generate_data_impl import setup_solver
 from neural_networks.data import load_nn_data
 
-dataName = "pure_normal-0"
+dataName = "pure_normal-clean"
 family = dho
 
 # Training Variables: Can be changed
@@ -61,22 +60,24 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     # Reserve 10,000 samples for validation.
     validation_cutoff = 10000
 
-    x_train, y_train = load_nn_data(family, dataName)
-    x_train = x_train[:, :TRAINING_TIMESTEPS + 1, :]
+    # Load data
+    x, y = load_nn_data(family, dataName)
+    x = x[:, :TRAINING_TIMESTEPS + 1, :]
 
-    x_val = x_train[-validation_cutoff:]
-    y_val = y_train[-validation_cutoff:]
-    x_train = x_train[:-validation_cutoff]
-    y_train = y_train[:-validation_cutoff]
+    # Split into train and validation
+    x_val = x[-validation_cutoff:]
+    y_val = y[-validation_cutoff:]
+    x_train = x[:-validation_cutoff]
+    y_train = y[:-validation_cutoff]
 
     # Prepare the training dataset.
     train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+
     # Prepare the validation dataset.
     val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
     val_dataset = val_dataset.batch(batch_size)
 
-    # ValueError: Input 0 of layer "dense" is incompatible with the layer: expected axis -1 of input shape to have value 65, but received input with shape (32, 205)
     return train_dataset, val_dataset
 
 
@@ -95,4 +96,6 @@ def loss_fn(true_trajectory: jnp.ndarray, y_predicted: jnp.ndarray) -> jnp.ndarr
     q_true = true_trajectory[:, :, 0]
 
     residuals = jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2)
+    jax.debug.print("Residuals: {}", residuals)
+    jax.debug.print("y_predicted: {}", y_predicted)
     return jnp.sqrt(residuals)

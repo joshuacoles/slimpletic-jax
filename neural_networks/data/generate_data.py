@@ -1,6 +1,9 @@
 import jax.numpy as jnp
 import jax.random
 
+jax.config.update("jax_debug_nans", True)
+jax.config.update("jax_enable_x64", True)
+
 from neural_networks.data import nn_data_path, save_nn_data
 from neural_networks.data.families import power_series_with_prefactor, aengus_original, dho
 from neural_networks.data.generate_data_impl import setup_solver
@@ -20,7 +23,7 @@ solver = setup_solver(
 )
 
 # Choose a name for the population you are generating
-population_name = f"pure_normal-{rng_seed}"
+population_name = f"pure_normal-clean"
 
 
 def generate_population():
