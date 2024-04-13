@@ -27,16 +27,24 @@ val_acc_metric = keras.metrics.CategoricalAccuracy()
 def compute_loss_and_updates(
         trainable_variables, non_trainable_variables, metric_variables, x, y
 ):
+    jax.debug.print("trainable_variables {}", non_trainable_variables)
+    jax.debug.print("non_trainable_variables {}", non_trainable_variables)
+
     y_pred, non_trainable_variables = model.stateless_call(
         trainable_variables, non_trainable_variables, x
     )
+
+    jax.debug.print("post stateless_call non_trainable_variables {}", non_trainable_variables)
+
     loss = loss_fn(
         true_trajectory=x,
         y_predicted=y_pred
     )
+
     metric_variables = train_acc_metric.stateless_update_state(
         metric_variables, y, y_pred
     )
+
     return loss, (non_trainable_variables, metric_variables)
 
 

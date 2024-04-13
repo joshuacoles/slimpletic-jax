@@ -39,8 +39,12 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
     :param dropout:
     :return:
     """
+    # lstm_layers = [[create_layer(units[-i], regulariser[-i] == 1), keras.layers.LayerNormalization()] for i in range(layers)]
+    lstm_layers = [[create_layer(units[-i], regulariser[-i] == 1)] for i in range(layers)]
+    lstm_layers = [item for sublist in lstm_layers for item in sublist]
+
     model = keras.Sequential([
-        *[create_layer(units[-i], regulariser[-i] == 1) for i in range(layers)],
+        *lstm_layers,
         keras.layers.Dropout(dropout),
         keras.layers.Flatten(),
         keras.layers.Dense(units=family.embedding_shape[0])
@@ -95,7 +99,10 @@ def loss_fn(true_trajectory: jnp.ndarray, y_predicted: jnp.ndarray) -> jnp.ndarr
     q_predicted = vmapped_solve(y_predicted)
     q_true = true_trajectory[:, :, 0]
 
-    residuals = jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2)
+    jax.debug.print("q_true: {}", q_true)
+    jax.debug.print("q_predicted: {}", q_predicted)
+
+    residuals = jnp.log(jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2))
     jax.debug.print("Residuals: {}", residuals)
     jax.debug.print("y_predicted: {}", y_predicted)
     return jnp.sqrt(residuals)
