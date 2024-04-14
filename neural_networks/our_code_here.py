@@ -88,7 +88,7 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
 def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
     return solve(
         embedding,
-        jnp.array([1.0]), jnp.array([1.0])
+        jnp.array([0.0]), jnp.array([1.0])
     )[0]
 
 
