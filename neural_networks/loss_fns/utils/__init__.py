@@ -8,7 +8,7 @@ from slimpletic import GGLBundle, SolverScan, DiscretisedSystem
 
 from neural_networks.data.families import Family
 from neural_networks.data.systems import PhysicalSystem, lookup_system
-from ..kinds.loss_fns import lookup_loss_fn
+from neural_networks.loss_fns.kinds import lookup_loss_fn
 
 
 def make_solver(system: PhysicalSystem, iterations: int):

@@ -22,21 +22,6 @@ def make_rms_both(solve: Callable, true_embedding: jnp.ndarray):
     return loss_fn
 
 
-def q_only_linear_weighted(solve: Callable, true_embedding: jnp.ndarray):
-    """
-    - Only care about q
-    - Weight divergence as exp
-    """
-    target_q, target_pi = solve(true_embedding)
-    weightings = jnp.arange(0, target_q.shape[0])
-
-    def loss_fn(embedding: jnp.ndarray):
-        q, _pi = solve(embedding)
-        return jnp.sum(jnp.dot(weightings, jnp.abs(target_q - q)))
-
-    return loss_fn
-
-
 def q_only(solve: Callable, true_embedding: jnp.ndarray):
     """
     - Only care about q
@@ -51,10 +36,41 @@ def q_only(solve: Callable, true_embedding: jnp.ndarray):
     return loss_fn
 
 
+def q_only_linear_weighted(solve: Callable, true_embedding: jnp.ndarray):
+    """
+    - Only care about q
+    - Weight divergence as linear increasing
+    """
+    target_q, target_pi = solve(true_embedding)
+    weightings = jnp.arange(0, target_q.shape[0])
+
+    def loss_fn(embedding: jnp.ndarray):
+        q, _pi = solve(embedding)
+        return jnp.sum(jnp.dot(weightings, jnp.abs(target_q - q)))
+
+    return loss_fn
+
+
+def q_only_with_embedding_norm_and_reverse_linear_weights(solve: Callable, true_embedding: jnp.ndarray):
+    """
+    - Only care about q
+    - Weight divergence as linear decreasing
+    """
+    target_q, target_pi = solve(true_embedding)
+    weights = jnp.arange(target_q.shape[0], 0, -1) / target_q.shape[0]
+
+    def loss_fn(embedding: jnp.ndarray):
+        q, _pi = solve(embedding)
+        # We add the norm of the embedding to the loss function to stop the embedding from growing too large
+        return jnp.linalg.norm(embedding) + jnp.sum(jnp.dot(weights, jnp.abs(target_q - q)))
+
+    return loss_fn
+
+
 def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
     """
     - Only care about q
-    - Weight divergence as exp
+    - Embedding norm as a regulariser loss
     """
     target_q, target_pi = solve(true_embedding)
 
@@ -67,6 +83,12 @@ def q_only_with_embedding_norm(solve: Callable, true_embedding: jnp.ndarray):
 
 
 def q_rms_embedding_norm_huber(solve: Callable, true_embedding: jnp.ndarray):
+    """
+    - Only care about q
+    - Regulariser loss
+        - Embedding norm
+        - Something that is supposed to be Huber loss on the embedding
+    """
     target_q, target_pi = solve(true_embedding)
     delta = 0.1
 
@@ -88,22 +110,6 @@ def q_rms_embedding_norm_huber(solve: Callable, true_embedding: jnp.ndarray):
         huber_loss = jnp.sum(huber_losses) / embedding.size
 
         return rms(q, target_q) + embedding_norm + huber_loss
-
-    return loss_fn
-
-
-def q_only_with_embedding_norm_and_reverse_linear_weights(solve: Callable, true_embedding: jnp.ndarray):
-    """
-    - Only care about q
-    - Weight divergence as exp
-    """
-    target_q, target_pi = solve(true_embedding)
-    weights = jnp.arange(target_q.shape[0], 0, -1) / target_q.shape[0]
-
-    def loss_fn(embedding: jnp.ndarray):
-        q, _pi = solve(embedding)
-        # We add the norm of the embedding to the loss function to stop the embedding from growing too large
-        return jnp.linalg.norm(embedding) + jnp.sum(jnp.dot(weights, jnp.abs(target_q - q)))
 
     return loss_fn
 
