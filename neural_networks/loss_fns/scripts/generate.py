@@ -16,7 +16,8 @@ import jaxopt
 from jax import numpy as jnp
 import numpy as np
 
-from ..kinds import families, loss_fns, systems
+from neural_networks.data.systems import shm_prefactor
+from neural_networks.loss_fns.kinds import q_rms_huber_embedding_norm
 from ..utils import create_system
 
 # import logging
@@ -30,8 +31,8 @@ if len(args) > 1:
     samples = int(args[3])
     maxiter = int(args[4])
 else:
-    system_key = systems.shm_prefactor
-    loss_fn_key = loss_fns.q_rms_huber_embedding_norm
+    system_key = shm_prefactor
+    loss_fn_key = q_rms_huber_embedding_norm
     samples = 5
     maxiter = 200
 
