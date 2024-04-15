@@ -2,11 +2,11 @@ import keras
 import jax
 import jax.numpy as jnp
 import tensorflow as tf
-from neural_networks.data.families import aengus_original, dho
+from neural_networks.data.families import dho
 from neural_networks.data.generate_data_impl import setup_solver
 from neural_networks.data import load_nn_data
 
-dataName = "pure_normal-clean"
+dataName = "physical-accurate-0"
 family = dho
 
 # Training Variables: Can be changed
@@ -44,6 +44,7 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
     lstm_layers = [item for sublist in lstm_layers for item in sublist]
 
     model = keras.Sequential([
+        keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2)),
         *lstm_layers,
         keras.layers.Dropout(dropout),
         keras.layers.Flatten(),
@@ -53,8 +54,8 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
 
 
 def get_model() -> keras.Model:
-    layers = 3
-    units = [5, 5, 5, 3]
+    layers = 4
+    units = [32, 16, 8, 4]
     regulariser = [1, 1, 1, 1]
     dropout = 0.25
     return create_model(layers, units, regulariser, dropout)
@@ -62,10 +63,18 @@ def get_model() -> keras.Model:
 
 def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     # Reserve 10,000 samples for validation.
-    validation_cutoff = 10000
+    validation_cutoff = 10_000
+    maximum_value = 10 ** 5
 
     # Load data
     x, y = load_nn_data(family, dataName)
+    row_indices = jnp.where(jnp.any(x > maximum_value, axis=1))[0]
+    x_mask = jnp.ones(x.shape[0], dtype=bool).at[row_indices].set(False)
+    y_mask = jnp.ones(y.shape[0], dtype=bool).at[row_indices].set(False)
+
+    x = x[x_mask]
+    y = y[y_mask]
+
     x = x[:, :TRAINING_TIMESTEPS + 1, :]
 
     # Split into train and validation
@@ -95,14 +104,16 @@ def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
 vmapped_solve = jax.vmap(fun=wrapped_solve, in_axes=(0,), )
 
 
-def loss_fn(true_trajectory: jnp.ndarray, y_predicted: jnp.ndarray) -> jnp.ndarray:
+def loss_fn(true_trajectory: jnp.ndarray, y_predicted: jnp.ndarray, y_true: jnp.ndarray) -> jnp.ndarray:
+    # return jnp.sqrt(jnp.sum(y_true - y_predicted) ** 2)
+
     q_predicted = vmapped_solve(y_predicted)
     q_true = true_trajectory[:, :, 0]
 
-    jax.debug.print("q_true: {}", q_true)
-    jax.debug.print("q_predicted: {}", q_predicted)
+    # jax.debug.print("q_true: {}", q_true)
+    # jax.debug.print("q_predicted: {}", q_predicted)
 
-    residuals = jnp.log(jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2))
-    jax.debug.print("Residuals: {}", residuals)
-    jax.debug.print("y_predicted: {}", y_predicted)
+    residuals = (jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2))
+    # jax.debug.print("Residuals: {}", residuals)
+    # jax.debug.print("y_predicted: {}", y_predicted)
     return jnp.sqrt(residuals)

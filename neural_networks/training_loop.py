@@ -9,7 +9,7 @@ jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_debug_nans", True)
 
 import keras
-from our_code_here import get_data, loss_fn, get_model
+from our_code_here import get_data, loss_fn, get_model, EPOCHS
 
 # Prepare the training dataset.
 batch_size = 32
@@ -28,16 +28,17 @@ val_acc_metric = keras.metrics.CategoricalAccuracy()
 def compute_loss_and_updates(
         trainable_variables, non_trainable_variables, metric_variables, x, y
 ):
-    jax.debug.print("trainable_variables {}", non_trainable_variables)
-    jax.debug.print("non_trainable_variables {}", non_trainable_variables)
+    # jax.debug.print("trainable_variables {}", non_trainable_variables)
+    # jax.debug.print("non_trainable_variables {}", non_trainable_variables)
 
     y_pred, non_trainable_variables = model.stateless_call(
         trainable_variables, non_trainable_variables, x
     )
 
-    jax.debug.print("post stateless_call non_trainable_variables {}", non_trainable_variables)
+    # jax.debug.print("post stateless_call non_trainable_variables {}", non_trainable_variables)
 
     loss = loss_fn(
+        y_true=y,
         true_trajectory=x,
         y_predicted=y_pred
     )
@@ -85,6 +86,7 @@ def eval_step(state, data):
     )
 
     loss = loss_fn(
+        y_true=y,
         true_trajectory=x,
         y_predicted=y_pred
     )
@@ -113,41 +115,42 @@ state = (
     metric_variables,
 )
 
-# Training loop
-for step, data in enumerate(train_dataset):
-    data = (data[0].numpy(), data[1].numpy())
-    loss, state = train_step(state, data)
-    # Log every 100 batches.
-    if step % 100 == 0:
-        print(f"Training loss (for 1 batch) at step {step}: {float(loss):.4f}")
-        _, _, _, metric_variables = state
-        for variable, value in zip(train_acc_metric.variables, metric_variables):
-            variable.assign(value)
-        print(f"Training accuracy: {train_acc_metric.result()}")
-        print(f"Seen so far: {(step + 1) * batch_size} samples")
+for epoch in range(EPOCHS):
+    # Training loop
+    for step, data in enumerate(train_dataset):
+        data = (data[0].numpy(), data[1].numpy())
+        loss, state = train_step(state, data)
 
-metric_variables = val_acc_metric.variables
+        if step % 1000 == 0:
+            print(f"{epoch}: Training loss (for 1 batch) at step {step}: {float(loss):.4f}")
+            _, _, _, metric_variables = state
+            for variable, value in zip(train_acc_metric.variables, metric_variables):
+                variable.assign(value)
+            print(f"{epoch}: Training accuracy: {train_acc_metric.result()}")
+            print(f"{epoch}: Seen so far: {(step + 1) * batch_size} samples")
 
-print(metric_variables)
+    metric_variables = val_acc_metric.variables
 
-(
-    trainable_variables,
-    non_trainable_variables,
-    optimizer_variables,
-    metric_variables,
-) = state
+    print(metric_variables)
 
-state = (trainable_variables, non_trainable_variables, metric_variables)
+    (
+        trainable_variables,
+        non_trainable_variables,
+        optimizer_variables,
+        metric_variables,
+    ) = state
 
-# Eval loop
-for step, data in enumerate(val_dataset):
-    data = (data[0].numpy(), data[1].numpy())
-    loss, state = eval_step(state, data)
-    # Log every 100 batches.
-    if step % 100 == 0:
-        print(f"Validation loss (for 1 batch) at step {step}: {float(loss):.4f}")
-        _, _, metric_variables = state
-        for variable, value in zip(val_acc_metric.variables, metric_variables):
-            variable.assign(value)
-        print(f"Validation accuracy: {val_acc_metric.result()}")
-        print(f"Seen so far: {(step + 1) * batch_size} samples")
+    val_state = (trainable_variables, non_trainable_variables, metric_variables)
+
+    # Eval loop
+    for step, data in enumerate(val_dataset):
+        data = (data[0].numpy(), data[1].numpy())
+        loss, val_state = eval_step(val_state, data)
+        # Log every 100 batches.
+        if step % 100 == 0:
+            print(f"Validation loss (for 1 batch) at step {step}: {float(loss):.4f}")
+            _, _, metric_variables = val_state
+            for variable, value in zip(val_acc_metric.variables, metric_variables):
+                variable.assign(value)
+            print(f"Validation accuracy: {val_acc_metric.result()}")
+            print(f"Seen so far: {(step + 1) * batch_size} samples")

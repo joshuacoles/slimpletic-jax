@@ -15,7 +15,7 @@ class Family:
 dho = Family(
     'dho',
     lambda q, v, _, embedding: embedding[0] * (v[0] ** 2) - embedding[1] * (q[0] ** 2),
-    lambda qp, qm, vp, vm, t, embedding: embedding[2] * vp[0] * qm[0],
+    lambda qp, qm, vp, vm, t, embedding: -embedding[2] * vp[0] * qm[0],
     (3,)
 )
 

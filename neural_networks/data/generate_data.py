@@ -9,7 +9,7 @@ from neural_networks.data.families import power_series_with_prefactor, aengus_or
 from neural_networks.data.generate_data_impl import setup_solver
 
 timesteps = 40
-count = 20000 * 10
+count = 1_000_000
 
 # Change this for different random seeds
 rng_seed = 0
@@ -23,7 +23,7 @@ solver = setup_solver(
 )
 
 # Choose a name for the population you are generating
-population_name = f"pure_normal-clean"
+population_name = f"physical-accurate-{rng_seed}"
 
 
 def generate_population():
@@ -31,8 +31,11 @@ def generate_population():
     Generate $count number of embeddings which will be used as training data. These align with the format of the family
     specified above.
     """
-    random_embeddings = jax.random.normal(rng, (count, *family.embedding_shape))
-    return random_embeddings
+    masses = jax.random.uniform(rng, (count, ), minval=0.1, maxval=10.0)
+    spring_constants = jax.random.uniform(rng, (count, ), minval=0.1, maxval=10.0)
+    damping_constants = jax.random.uniform(rng, (count, ), minval=0.1, maxval=10.0)
+
+    return jnp.stack([masses, spring_constants, damping_constants], axis=-1)
 
 
 lagrangian_embeddings = generate_population()
