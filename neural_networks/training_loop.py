@@ -35,9 +35,9 @@ def compute_loss_and_updates(
     # jax.debug.print("post stateless_call non_trainable_variables {}", non_trainable_variables)
 
     loss = loss_fn(
-        y_true=y,
+        true_embedding=y,
         true_trajectory=x,
-        y_predicted=y_pred
+        predicted_embedding=y_pred
     )
 
     metric_variables = train_acc_metric.stateless_update_state(
@@ -83,9 +83,9 @@ def eval_step(state, data):
     )
 
     loss = loss_fn(
-        y_true=y,
+        true_embedding=y,
         true_trajectory=x,
-        y_predicted=y_pred
+        predicted_embedding=y_pred
     )
 
     metric_variables = val_acc_metric.stateless_update_state(

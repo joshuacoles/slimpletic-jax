@@ -108,22 +108,23 @@ def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:
     return solve(
         embedding,
         jnp.array([0.0]), jnp.array([1.0])
-    )[0]
+    )
 
 
 vmapped_solve = jax.vmap(fun=wrapped_solve, in_axes=(0,), )
 
 
-def loss_fn(true_trajectory: jnp.ndarray, y_predicted: jnp.ndarray, y_true: jnp.ndarray) -> jnp.ndarray:
-    # return jnp.sqrt(jnp.sum(y_true - y_predicted) ** 2)
+def rms(x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+    return jnp.sqrt(jnp.mean((x1 - x2) ** 2))
 
-    q_predicted = vmapped_solve(y_predicted)
-    q_true = true_trajectory[:, :, 0]
 
-    # jax.debug.print("q_true: {}", q_true)
-    # jax.debug.print("q_predicted: {}", q_predicted)
+def loss_fn(true_trajectory: jnp.ndarray, predicted_embedding: jnp.ndarray, true_embedding: jnp.ndarray) -> jnp.ndarray:
+    q_true, pi_true = true_trajectory[:, :, 0], true_trajectory[:, :, 1]
+    q_predicted, pi_predicted = vmapped_solve(predicted_embedding)
+    q_predicted = q_predicted.reshape(q_true.shape)
+    pi_predicted = pi_predicted.reshape(pi_true.shape)
 
-    residuals = (jnp.sum((q_true - q_predicted.reshape(q_true.shape)) ** 2))
-    # jax.debug.print("Residuals: {}", residuals)
-    # jax.debug.print("y_predicted: {}", y_predicted)
-    return jnp.sqrt(residuals)
+    physical_loss = rms(q_predicted, q_true)
+    regulariser_loss = jnp.linalg.norm(predicted_embedding)
+
+    return physical_loss + regulariser_loss
