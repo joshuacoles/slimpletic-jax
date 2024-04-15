@@ -14,6 +14,7 @@ family = dho
 EPOCHS = 5
 TRAINING_TIMESTEPS = 20
 BATCH_SIZE = 64
+SHUFFLE_SEED = None
 
 # Solver
 solve = setup_solver(
@@ -91,7 +92,10 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
 
     # Prepare the training dataset.
     train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+    train_dataset = train_dataset.shuffle(
+        buffer_size=1024,
+        seed=SHUFFLE_SEED,
+    ).batch(batch_size)
 
     # Prepare the validation dataset.
     val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
