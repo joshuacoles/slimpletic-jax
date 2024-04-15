@@ -9,12 +9,9 @@ jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_debug_nans", True)
 
 import keras
-from our_code_here import get_data, loss_fn, get_model, EPOCHS
+from our_code_here import get_data, loss_fn, get_model, EPOCHS, BATCH_SIZE
 
-# Prepare the training dataset.
-batch_size = 32
-
-train_dataset, val_dataset = get_data(batch_size)
+train_dataset, val_dataset = get_data(BATCH_SIZE)
 model = get_model()
 
 # Instantiate an optimizer to train the model.
@@ -122,12 +119,12 @@ for epoch in range(EPOCHS):
         loss, state = train_step(state, data)
 
         if step % 1000 == 0:
-            print(f"{epoch}: Training loss (for 1 batch) at step {step}: {float(loss):.4f}")
+            print(f"{epoch}: Training loss (for 1 batch) at batch {step}: {float(loss):.4f}")
             _, _, _, metric_variables = state
             for variable, value in zip(train_acc_metric.variables, metric_variables):
                 variable.assign(value)
             print(f"{epoch}: Training accuracy: {train_acc_metric.result()}")
-            print(f"{epoch}: Seen so far: {(step + 1) * batch_size} samples")
+            print(f"{epoch}: Seen so far: {(step + 1) * BATCH_SIZE} samples")
 
     metric_variables = val_acc_metric.variables
 
@@ -148,9 +145,9 @@ for epoch in range(EPOCHS):
         loss, val_state = eval_step(val_state, data)
         # Log every 100 batches.
         if step % 100 == 0:
-            print(f"Validation loss (for 1 batch) at step {step}: {float(loss):.4f}")
+            print(f"Validation loss (for 1 batch) at batch {step}: {float(loss):.4f}")
             _, _, metric_variables = val_state
             for variable, value in zip(val_acc_metric.variables, metric_variables):
                 variable.assign(value)
             print(f"Validation accuracy: {val_acc_metric.result()}")
-            print(f"Seen so far: {(step + 1) * batch_size} samples")
+            print(f"Seen so far: {(step + 1) * BATCH_SIZE} samples")

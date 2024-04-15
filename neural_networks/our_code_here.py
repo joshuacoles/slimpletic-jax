@@ -2,6 +2,7 @@ import keras
 import jax
 import jax.numpy as jnp
 import tensorflow as tf
+import sys
 from neural_networks.data.families import dho
 from neural_networks.data.generate_data_impl import setup_solver
 from neural_networks.data import load_nn_data
@@ -10,9 +11,9 @@ dataName = "physical-accurate-0"
 family = dho
 
 # Training Variables: Can be changed
-EPOCHS = 20
-TRAINING_TIMESTEPS = 12
-TRAINING_DATASIZE = 2
+EPOCHS = 5
+TRAINING_TIMESTEPS = 20
+BATCH_SIZE = 64
 
 # Solver
 solve = setup_solver(
@@ -55,9 +56,9 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
 
 def get_model() -> keras.Model:
     layers = 4
-    units = [32, 16, 8, 4]
+    units = [20, 15, 10, 5]
     regulariser = [1, 1, 1, 1]
-    dropout = 0.25
+    dropout = 0.15
     return create_model(layers, units, regulariser, dropout)
 
 
@@ -82,6 +83,11 @@ def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     y_val = y[-validation_cutoff:]
     x_train = x[:-validation_cutoff]
     y_train = y[:-validation_cutoff]
+
+    if not (jnp.all(jnp.isfinite(x_train)) and jnp.all(jnp.isfinite(y_train))):
+        sys.exit('infs/NaNs in training data')
+    if not (jnp.all(jnp.isfinite(x_val)) and jnp.all(jnp.isfinite(y_val))):
+        sys.exit('infs/NaNs in validation data')
 
     # Prepare the training dataset.
     train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
