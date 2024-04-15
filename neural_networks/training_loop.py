@@ -1,4 +1,9 @@
+import datetime
+import json
 import os
+from pathlib import Path
+
+from neural_networks.data import project_data_root
 
 # This guide can only be run with the jax backend.
 os.environ["KERAS_BACKEND"] = "jax"
@@ -9,7 +14,8 @@ jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_debug_nans", True)
 
 import keras
-from our_code_here import get_data, loss_fn, get_model, EPOCHS, BATCH_SIZE
+from our_code_here import get_data, loss_fn, get_model, EPOCHS, BATCH_SIZE, dataName, family, SHUFFLE_SEED, \
+    TRAINING_TIMESTEPS
 
 train_dataset, val_dataset = get_data(BATCH_SIZE)
 model = get_model()
@@ -112,6 +118,23 @@ state = (
     metric_variables,
 )
 
+data_dir = project_data_root.joinpath("training_data").joinpath(datetime.datetime.now().isoformat())
+data_dir.mkdir(parents=True)
+loss_data = open(data_dir.joinpath("loss.csv"), "w")
+val_loss_data = open(data_dir.joinpath("val_loss.csv"), "w")
+
+loss_data.write("epoch,step,loss,accuracy\n")
+val_loss_data.write("epoch,step,loss,accuracy\n")
+
+json.dump({
+    "data_name": dataName,
+    "family": family.key,
+    "epochs": EPOCHS,
+    "training_timesteps": TRAINING_TIMESTEPS,
+    "batch_size": BATCH_SIZE,
+    "shuffle_seed": SHUFFLE_SEED,
+}, open(data_dir.joinpath("config.json"), "w"))
+
 for epoch in range(EPOCHS):
     # Training loop
     for step, data in enumerate(train_dataset):
@@ -125,6 +148,8 @@ for epoch in range(EPOCHS):
                 variable.assign(value)
             print(f"{epoch}: Training accuracy: {train_acc_metric.result()}")
             print(f"{epoch}: Seen so far: {(step + 1) * BATCH_SIZE} samples")
+            loss_data.write(f"{epoch},{step},{float(loss)},{train_acc_metric.result()}\n")
+            loss_data.flush()
 
     metric_variables = val_acc_metric.variables
 
@@ -151,3 +176,8 @@ for epoch in range(EPOCHS):
                 variable.assign(value)
             print(f"Validation accuracy: {val_acc_metric.result()}")
             print(f"Seen so far: {(step + 1) * BATCH_SIZE} samples")
+            val_loss_data.write(f"{epoch},{step},{float(loss)},{val_acc_metric.result()}\n")
+            val_loss_data.flush()
+
+    # Save model
+    keras.models.save_model(model, data_dir.joinpath(f"model_{epoch}.keras"))
