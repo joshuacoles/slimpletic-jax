@@ -21,7 +21,7 @@ train_dataset, val_dataset = get_data(BATCH_SIZE)
 model = get_model()
 
 # Instantiate an optimizer to train the model.
-optimizer = keras.optimizers.Adam(learning_rate=1e-3)
+optimizer = keras.optimizers.Adam(learning_rate=5*1e-4)
 
 # Prepare the metrics.
 train_acc_metric = keras.metrics.CategoricalAccuracy()

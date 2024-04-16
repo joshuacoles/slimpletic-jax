@@ -7,13 +7,13 @@ from neural_networks.data.families import dho
 from neural_networks.data.generate_data_impl import setup_solver
 from neural_networks.data import load_nn_data
 
-dataName = "physical-accurate-0"
+dataName = "physical-accurate-large-data-0"
 family = dho
 
 # Training Variables: Can be changed
-EPOCHS = 5
+EPOCHS = 10
 TRAINING_TIMESTEPS = 20
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 SHUFFLE_SEED = None
 
 # Solver
@@ -56,10 +56,10 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
 
 
 def get_model() -> keras.Model:
-    layers = 4
-    units = [20, 15, 10, 5]
-    regulariser = [1, 1, 1, 1]
-    dropout = 0.15
+    layers = 5
+    units = [50, 25, 15, 10,5]
+    regulariser = [1, 1, 1, 1, 1]
+    dropout = 0.10
     return create_model(layers, units, regulariser, dropout)
 
 
@@ -124,7 +124,6 @@ def loss_fn(true_trajectory: jnp.ndarray, predicted_embedding: jnp.ndarray, true
     q_predicted = q_predicted.reshape(q_true.shape)
     pi_predicted = pi_predicted.reshape(pi_true.shape)
 
-    physical_loss = rms(q_predicted, q_true)
-    regulariser_loss = jnp.linalg.norm(predicted_embedding)
+    physical_loss = rms(q_predicted, q_true) + rms(pi_predicted,pi_true)
 
-    return physical_loss + regulariser_loss
+    return physical_loss/2
