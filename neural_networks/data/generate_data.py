@@ -9,7 +9,7 @@ from neural_networks.data.families import power_series_with_prefactor, aengus_or
 from neural_networks.data.generate_data_impl import setup_solver
 
 timesteps = 40
-count = 10_000_000
+count = 5_000_000
 
 # Change this for different random seeds
 rng_seed = 0
