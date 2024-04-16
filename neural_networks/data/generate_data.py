@@ -8,8 +8,8 @@ from neural_networks.data import nn_data_path, save_nn_data
 from neural_networks.data.families import power_series_with_prefactor, aengus_original, dho
 from neural_networks.data.generate_data_impl import setup_solver
 
-timesteps = 25
-count = 5_000_000
+timesteps = 40
+count = 10_000_000
 
 # Change this for different random seeds
 rng_seed = 0
