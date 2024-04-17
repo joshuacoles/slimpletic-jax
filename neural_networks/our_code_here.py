@@ -57,9 +57,9 @@ def create_model(layers: int, units: list[int], regulariser: list[int], dropout:
 
 def get_model() -> keras.Model:
     layers = 5
-    units = [50, 25, 15, 10,5]
+    units = [50, 40, 30, 20, 10]
     regulariser = [1, 1, 1, 1, 1]
-    dropout = 0.10
+    dropout = 0.5
     return create_model(layers, units, regulariser, dropout)
 
 
