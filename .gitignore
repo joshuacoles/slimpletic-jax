@@ -6,3 +6,6 @@
 data/loss_fns
 data/nn_data
 *.tfrecord
+
+data/figures
+data/nn_data
