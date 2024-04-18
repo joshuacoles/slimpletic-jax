@@ -13,11 +13,8 @@ dataFiles = [
 
 family = dho
 
-# Training Variables: Can be changed
-EPOCHS = 2
+# NOTE: This is no longer used in neural_network, set the value there instead
 TRAINING_TIMESTEPS = 100
-BATCH_SIZE = 128
-SHUFFLE_SEED = None
 
 
 def create_layer(unit: int, regularizer: bool):

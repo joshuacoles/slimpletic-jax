@@ -5,18 +5,20 @@ os.environ["KERAS_BACKEND"] = "jax"
 
 from neural_networks.data import lookup_family
 from neural_networks.data.generate_data_impl import setup_solver
-from neural_networks.our_code_here import TRAINING_TIMESTEPS
-
-import jax
 import keras
 import jax.numpy as jnp
+import numpy as np
 import matplotlib.pyplot as plt
 
-model = keras.models.load_model('/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/neural_networks/model.keras')
+model = keras.models.load_model('neural_networks/model.keras')
+
+# We can graph longer than the model is trained on
+graph_timesteps = 200
+model_timesteps = model.layers[-1].timesteps
 
 solver = setup_solver(
     family=lookup_family('dho'),
-    iterations=TRAINING_TIMESTEPS
+    iterations=max(graph_timesteps, model_timesteps)
 )
 
 # Generate data
@@ -29,8 +31,8 @@ q, pi = solver(
 
 # Reshape to match model input
 model_input = jnp.concatenate([
-    q[:TRAINING_TIMESTEPS + 1],
-    pi[:TRAINING_TIMESTEPS + 1]
+    q[:model_timesteps],
+    pi[:model_timesteps]
 ], axis=-1).reshape(
     (1, model.input_shape[1], model.input_shape[2])
 )

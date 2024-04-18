@@ -1,12 +1,9 @@
 import sys
 from pathlib import Path
 from typing import Union
-
-import tensorflow as tf
 from jax import numpy as jnp
 
 from neural_networks.data.families import Family, lookup_family
-from neural_networks.our_code_here import family, TRAINING_TIMESTEPS, SHUFFLE_SEED
 
 # The root directory where all data will be stored, $PROJECT_ROOT/data
 project_data_root = Path(__file__).parent.parent.parent.joinpath('data')
@@ -37,12 +34,17 @@ def save_nn_data(
     jnp.save(data_dir.joinpath("y"), lagrangian_embeddings)
 
 
-def filter_bad_trajectories(x, y, maximum_value: int | None = None):
+def filter_bad_trajectories(x, y, maximum_value: float | None = None):
     """
-    Filter out rows with infinite or NaN values from the data.
+    Filter out rows with infinite or NaN, or over maximum values from the data.
     """
     # Find the row indices of rows containing infinite values
-    row_indices = jnp.where(jnp.any(jnp.isinf(x) | jnp.isnan(x) | x > maximum_value, axis=1))[0]
+    condition = jnp.isinf(x) | jnp.isnan(x)
+
+    if maximum_value is not None:
+        condition |= (x > maximum_value)
+
+    row_indices = jnp.where(jnp.any(condition, axis=1))[0]
 
     # Create a boolean mask for rows to keep (rows without infinite values)
     x_mask = jnp.ones(x.shape[0], dtype=bool).at[row_indices].set(False)
@@ -55,7 +57,9 @@ def load_nn_data(
         family: Union[Family, str],
         population_name: str,
         filter_bad_data: bool = True,
-        maximum_value: int | None = None,
+        maximum_value: float = 10 ** 5,
+        timestep_cap: int | None = None,
+        datasize_cap: int | None = None,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Load the data for a given family and population name. Will overwrite the data if it already exists.
@@ -85,9 +89,14 @@ def load_nn_data(
     verify_data_integrity(family, x_data, y_data)
 
     if filter_bad_data:
-        filter_bad_trajectories(x_data, y_data, maximum_value)
-    elif maximum_value:
-        print("Warning: maximum_value is only used when filter_bad_data is True", file=sys.stderr)
+        x_data, y_data = filter_bad_trajectories(x_data, y_data, maximum_value)
+
+    if timestep_cap is not None:
+        x_data = x_data[:, :timestep_cap + 1, :]
+
+    if datasize_cap is not None:
+        x_data = x_data[:datasize_cap]
+        y_data = y_data[:datasize_cap]
 
     return x_data, y_data
 
@@ -101,55 +110,3 @@ def verify_data_integrity(family: Family, trajectories: jnp.ndarray, embeddings:
 
     assert embeddings.shape[1] == family.embedding_shape[0], \
         "Embeddings must have the correct shape for the family"
-
-
-def load_data_wrapped(
-        family: Family | str,
-        data_name: str,
-        timestep_cap: int,
-        datasize_cap: int | None = None,
-        maximum_value: int = 10 ** 5
-):
-    # Load data
-    x, y = load_nn_data(family, data_name)
-    row_indices = jnp.where(jnp.any(x > maximum_value, axis=1))[0]
-    x_mask = jnp.ones(x.shape[0], dtype=bool).at[row_indices].set(False)
-    y_mask = jnp.ones(y.shape[0], dtype=bool).at[row_indices].set(False)
-    x = x[x_mask]
-    y = y[y_mask]
-    x = x[:, :timestep_cap + 1, :]
-
-    if datasize_cap is not None:
-        x = x[:datasize_cap]
-        y = y[:datasize_cap]
-
-    return x, y
-
-# def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.Dataset]:
-#     # Reserve 10,000 samples for validation.
-#     validation_cutoff = 10_000
-#     x, y = load_data_wrapped(family, dataName, TRAINING_TIMESTEPS)
-#
-#     # Split into train and validation
-#     x_val = x[-validation_cutoff:]
-#     y_val = y[-validation_cutoff:]
-#     x_train = x[:-validation_cutoff]
-#     y_train = y[:-validation_cutoff]
-#
-#     if not (jnp.all(jnp.isfinite(x_train)) and jnp.all(jnp.isfinite(y_train))):
-#         sys.exit('infs/NaNs in training data')
-#     if not (jnp.all(jnp.isfinite(x_val)) and jnp.all(jnp.isfinite(y_val))):
-#         sys.exit('infs/NaNs in validation data')
-#
-#     # Prepare the training dataset.
-#     train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-#     train_dataset = train_dataset.shuffle(
-#         buffer_size=1024,
-#         seed=SHUFFLE_SEED,
-#     ).batch(batch_size)
-#
-#     # Prepare the validation dataset.
-#     val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
-#     val_dataset = val_dataset.batch(batch_size)
-#
-#     return train_dataset, val_dataset
