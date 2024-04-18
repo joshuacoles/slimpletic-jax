@@ -7,6 +7,7 @@ from neural_networks.physical_loss_layer import PhysicsLoss
 
 import keras
 import pandas as pd
+import jax
 
 from neural_networks.data.families import dho
 from neural_networks.our_code_here import create_layer
@@ -42,11 +43,13 @@ x, y = load_nn_data(
     timestep_cap=TRAINING_TIMESTEPS,
     datasize_cap=1_000_000
 )
+#
+# jax.profiler.start_trace("/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/data/logs", create_perfetto_link=True)
 
 history = model.fit(
     x,
     y,
-    epochs=2,
+    epochs=4,
     batch_size=256,
     validation_split=0.2,
 )
@@ -63,3 +66,5 @@ with open(model_data_root / hist_csv_file, mode='w') as f:
     hist_df.to_csv(f)
 
 model.save(model_data_root / "model.keras")
+
+# jax.profiler.stop_trace()

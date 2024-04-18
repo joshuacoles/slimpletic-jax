@@ -18,13 +18,11 @@ TRAINING_TIMESTEPS = 100
 
 
 def create_layer(unit: int, regularizer: bool):
-    if regularizer:
-        return keras.layers.LSTM(units=unit, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                                 return_sequences=True,
-                                 kernel_regularizer=keras.regularizers.L1L2())
-    else:
-        return keras.layers.LSTM(units=unit, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                                 return_sequences=True)
+    return keras.layers.LSTM(
+        units=unit,
+        return_sequences=True,
+        kernel_regularizer=keras.regularizers.L1L2() if regularizer else None
+    )
 
 
 def create_model_layers(layers: int, units: list[int], regulariser: list[int], dropout: float,
