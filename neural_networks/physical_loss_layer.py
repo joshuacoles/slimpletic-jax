@@ -1,22 +1,21 @@
+from typing import Union
+
 import jax
 import keras
 from jax import numpy as jnp
 
-from neural_networks.data import Family
+from neural_networks.data import Family, lookup_family
 from neural_networks.data.generate_data_impl import setup_solver
-from neural_networks.our_code_here import vmapped_solve, rms
+from neural_networks.our_code_here import rms
+
+PHYSICAL_COMPONENT_LOSS_MAXIMUM = 10 ** 15
 
 
 @keras.saving.register_keras_serializable()
 class PhysicsLoss(keras.layers.Layer):
-    def __init__(self, family: Family, **kwargs):
+    def __init__(self, family: Union[Family, str], **kwargs):
         super().__init__(**kwargs)
-        self.family = family
-
-    def get_config(self):
-        return {
-            'family': self.family.key
-        }
+        self.family = family if isinstance(family, Family) else lookup_family(family)
 
     def build(self, input_shape):
         x_shape, y_shape = input_shape
@@ -45,7 +44,8 @@ class PhysicsLoss(keras.layers.Layer):
         rms_q = rms(q_predicted, q_true)
         rms_pi = rms(pi_predicted, pi_true)
 
-        physical_loss = rms_q + rms_pi
+        physical_loss = jnp.clip(rms_q, 0, PHYSICAL_COMPONENT_LOSS_MAXIMUM) + jnp.clip(rms_pi, 0,
+                                                                                       PHYSICAL_COMPONENT_LOSS_MAXIMUM)
         non_negatives = jnp.mean(jax.lax.select(y_pred < 0, jnp.exp(-10 * y_pred), jnp.zeros_like(y_pred)))
 
         return physical_loss / 2 + jnp.clip(non_negatives, 0, 1000)

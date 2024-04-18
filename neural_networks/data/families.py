@@ -15,6 +15,15 @@ class Family:
     def from_key(key: str):
         return lookup_family(key)
 
+    def get_config(self):
+        return {
+            'key': self.key,
+        }
+
+    @staticmethod
+    def from_config(config):
+        return lookup_family(config['key'])
+
 
 dho = Family(
     'dho',
@@ -45,7 +54,7 @@ aengus_original = Family(
     'aengus_original',
     lambda q, v, _, an: jax.lax.fori_loop(0, 2,
                                           lambda i, acc: acc + (an[2 * i] * q[0] ** (i + 1)) + (
-                                                      an[2 * i + 1] * v[0] ** (i + 1)),
+                                                  an[2 * i + 1] * v[0] ** (i + 1)),
                                           0.0),
     None,
     (4,)

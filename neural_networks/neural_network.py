@@ -39,15 +39,12 @@ x, y = load_data_wrapped(
     datasize_cap=100_000
 )
 
-tb_callback = keras.callbacks.TensorBoard('./logs', update_freq=1)
-
 model.fit(
     x,
     y,
     epochs=2,
     batch_size=256,
     validation_split=0.2,
-    callbacks=[tb_callback],
 )
 
 model.save("model.keras")
