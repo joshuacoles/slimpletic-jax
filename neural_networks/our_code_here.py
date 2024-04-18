@@ -15,7 +15,7 @@ family = dho
 
 # Training Variables: Can be changed
 EPOCHS = 2
-TRAINING_TIMESTEPS = 10
+TRAINING_TIMESTEPS = 100
 BATCH_SIZE = 128
 SHUFFLE_SEED = None
 

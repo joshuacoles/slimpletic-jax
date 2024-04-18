@@ -8,8 +8,8 @@ from neural_networks.data import nn_data_path, save_nn_data
 from neural_networks.data.families import power_series_with_prefactor, aengus_original, dho
 from neural_networks.data.generate_data_impl import setup_solver
 
-timesteps = 40
-count = 5_000_000
+timesteps = 100
+count = 2_000_000
 
 # Change this for different random seeds
 rng_seed = 0
@@ -23,7 +23,7 @@ solver = setup_solver(
 )
 
 # Choose a name for the population you are generating
-population_name = f"physical-accurate-large-data-{rng_seed}"
+population_name = f"josh"
 
 
 def generate_population():
@@ -32,8 +32,8 @@ def generate_population():
     specified above.
     """
     masses = jax.random.uniform(rng, (count, ), minval=0.01, maxval=20.0)
-    spring_constants = jax.random.uniform(rng, (count, ), minval=0.01, maxval=20.0)
-    damping_constants = jax.random.uniform(rng, (count, ), minval=0.01, maxval=20.0)
+    spring_constants = jax.random.uniform(rng, (count, ), minval=0, maxval=20.0)
+    damping_constants = jax.random.uniform(rng, (count, ), minval=0, maxval=20.0)
 
     return jnp.stack([masses, spring_constants, damping_constants], axis=-1)
 
