@@ -123,4 +123,9 @@ x, y = load_nn_data(
     'physical-accurate-0'
 )
 
-model.fit(x, y, epochs=5)
+# Just use `fit` as usual
+model.fit(
+    x,
+    y,
+    epochs=5
+)

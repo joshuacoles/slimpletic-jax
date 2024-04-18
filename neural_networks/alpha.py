@@ -8,6 +8,9 @@ import keras
 import numpy as np
 import jax.numpy as jnp
 
+from neural_networks.data import load_nn_data
+from neural_networks.our_code_here import create_model_layers, rms, vmapped_solve
+
 
 class CustomModel(keras.Sequential):
     def __init__(self):
@@ -107,7 +110,14 @@ class CustomModel(keras.Sequential):
 model = CustomModel()
 model.compile(optimizer="adam", metrics=["mae"])
 
+x, y = load_nn_data(
+    'dho',
+    'physical-accurate-0'
+)
+
 # Just use `fit` as usual
-x = np.random.random((1000, 32))
-y = np.random.random((1000, 1))
-model.fit(x, y, epochs=3)
+model.fit(
+    np.random.random((1000, 32)),
+    np.random.random((1000, 1)),
+    epochs=5
+)
