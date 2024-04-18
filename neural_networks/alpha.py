@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 # This guide can only be run with the JAX backend.
 os.environ["KERAS_BACKEND"] = "jax"
@@ -22,7 +23,8 @@ class CustomModel(keras.Sequential):
                 layers=5,
                 units=[50, 25, 15, 10, 5],
                 regulariser=[1, 1, 1, 1, 1],
-                dropout=0.10
+                dropout=0.10,
+                timestep_cap=TRAINING_TIMESTEPS
             )
         )
 
@@ -36,8 +38,9 @@ class CustomModel(keras.Sequential):
         pi_predicted = pi_predicted.reshape(pi_true.shape)
 
         physical_loss = rms(q_predicted, q_true) + rms(pi_predicted, pi_true)
+        non_negatives = jnp.mean(jax.lax.select(y_pred < 0, jnp.exp(-10 * y_pred), jnp.zeros_like(y_pred)))
 
-        return physical_loss / 2
+        return physical_loss / 2 + non_negatives
 
     def compute_loss_and_updates(
             self,
@@ -127,8 +130,12 @@ model.compile(optimizer="adam", metrics=["mae"])
 
 x, y = load_data_wrapped(
     'dho',
-    'physical-accurate-0'
+    'physical-accurate-0',
+    TRAINING_TIMESTEPS
 )
+
+x = x[:10, :, :]
+y = y[:10, :]
 
 print(x.shape, y.shape)
 
@@ -139,4 +146,4 @@ model.fit(
     epochs=5
 )
 
-model.save("model.h5")
+model.save("model.keras")

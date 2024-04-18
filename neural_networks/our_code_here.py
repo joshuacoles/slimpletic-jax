@@ -36,12 +36,12 @@ def create_layer(unit: int, regularizer: bool):
                                  return_sequences=True)
 
 
-def create_model_layers(layers: int, units: list[int], regulariser: list[int], dropout: float) -> list[Layer]:
+def create_model_layers(layers: int, units: list[int], regulariser: list[int], dropout: float, timestep_cap: int = TRAINING_TIMESTEPS) -> list[Layer]:
     lstm_layers = [[create_layer(units[-i], regulariser[-i] == 1)] for i in range(layers)]
     lstm_layers = [item for sublist in lstm_layers for item in sublist]
 
     return [
-        keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2)),
+        keras.Input(shape=(timestep_cap + 1, 2)),
         *lstm_layers,
         keras.layers.Dropout(dropout),
         keras.layers.Flatten(),
@@ -64,7 +64,7 @@ def get_model() -> keras.Model:
 def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     # Reserve 10,000 samples for validation.
     validation_cutoff = 10_000
-    x, y = load_data_wrapped(family, dataName)
+    x, y = load_data_wrapped(family, dataName, TRAINING_TIMESTEPS)
 
     # Split into train and validation
     x_val = x[-validation_cutoff:]
@@ -91,7 +91,7 @@ def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.D
     return train_dataset, val_dataset
 
 
-def load_data_wrapped(family, dataName):
+def load_data_wrapped(family, dataName, timestep_cap):
     maximum_value = 10 ** 5
     # Load data
     x, y = load_nn_data(family, dataName)
@@ -100,7 +100,7 @@ def load_data_wrapped(family, dataName):
     y_mask = jnp.ones(y.shape[0], dtype=bool).at[row_indices].set(False)
     x = x[x_mask]
     y = y[y_mask]
-    x = x[:, :TRAINING_TIMESTEPS + 1, :]
+    x = x[:, :timestep_cap + 1, :]
     return x, y
 
 
