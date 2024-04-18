@@ -64,18 +64,7 @@ def get_model() -> keras.Model:
 def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     # Reserve 10,000 samples for validation.
     validation_cutoff = 10_000
-    maximum_value = 10 ** 5
-
-    # Load data
-    x, y = load_nn_data(family, dataName)
-    row_indices = jnp.where(jnp.any(x > maximum_value, axis=1))[0]
-    x_mask = jnp.ones(x.shape[0], dtype=bool).at[row_indices].set(False)
-    y_mask = jnp.ones(y.shape[0], dtype=bool).at[row_indices].set(False)
-
-    x = x[x_mask]
-    y = y[y_mask]
-
-    x = x[:, :TRAINING_TIMESTEPS + 1, :]
+    x, y = load_data_wrapped(family, dataName)
 
     # Split into train and validation
     x_val = x[-validation_cutoff:]
@@ -100,6 +89,19 @@ def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.D
     val_dataset = val_dataset.batch(batch_size)
 
     return train_dataset, val_dataset
+
+
+def load_data_wrapped(family, dataName):
+    maximum_value = 10 ** 5
+    # Load data
+    x, y = load_nn_data(family, dataName)
+    row_indices = jnp.where(jnp.any(x > maximum_value, axis=1))[0]
+    x_mask = jnp.ones(x.shape[0], dtype=bool).at[row_indices].set(False)
+    y_mask = jnp.ones(y.shape[0], dtype=bool).at[row_indices].set(False)
+    x = x[x_mask]
+    y = y[y_mask]
+    x = x[:, :TRAINING_TIMESTEPS + 1, :]
+    return x, y
 
 
 def wrapped_solve(embedding: jnp.ndarray) -> jnp.ndarray:

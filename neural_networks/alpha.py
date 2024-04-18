@@ -9,14 +9,24 @@ import numpy as np
 import jax.numpy as jnp
 
 from neural_networks.data import load_nn_data
-from neural_networks.our_code_here import create_model_layers, rms, vmapped_solve
+from neural_networks.data.families import dho
+from neural_networks.our_code_here import create_model_layers, rms, vmapped_solve, TRAINING_TIMESTEPS, load_data_wrapped
+
+family = dho
 
 
 class CustomModel(keras.Sequential):
     def __init__(self):
         super().__init__([
-            keras.Input(shape=(32,)),
-            keras.layers.Dense(1)
+            keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2)),
+
+            keras.layers.LSTM(units=50, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                              return_sequences=True,
+                              kernel_regularizer=keras.regularizers.L1L2()),
+
+            keras.layers.Dropout(0.5),
+            keras.layers.Flatten(),
+            keras.layers.Dense(family.embedding_shape[0])
         ])
 
         self.loss_tracker = keras.metrics.Mean(name="loss")
@@ -110,14 +120,16 @@ class CustomModel(keras.Sequential):
 model = CustomModel()
 model.compile(optimizer="adam", metrics=["mae"])
 
-x, y = load_nn_data(
+x, y = load_data_wrapped(
     'dho',
     'physical-accurate-0'
 )
 
+print(x.shape, y.shape)
+
 # Just use `fit` as usual
 model.fit(
-    np.random.random((1000, 32)),
-    np.random.random((1000, 1)),
+    x,
+    y,
     epochs=5
 )
