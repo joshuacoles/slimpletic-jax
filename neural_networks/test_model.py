@@ -1,4 +1,5 @@
 import os
+import sys
 
 # This guide can only be run with the JAX backend.
 os.environ["KERAS_BACKEND"] = "jax"
@@ -10,7 +11,15 @@ import jax.numpy as jnp
 import numpy as np
 import matplotlib.pyplot as plt
 
-model = keras.models.load_model('neural_networks/model.keras')
+# Get the path from the first argument
+path = sys.argv[1]
+
+# Get the three floats from the command line arguments
+float1 = float(sys.argv[2])
+float2 = float(sys.argv[3])
+float3 = float(sys.argv[4])
+
+model = keras.models.load_model(path)
 
 # We can graph longer than the model is trained on
 graph_timesteps = 200
@@ -22,7 +31,7 @@ solver = setup_solver(
 )
 
 # Generate data
-true_embedding = jnp.array([1.0, 2.0, 3.0])
+true_embedding = jnp.array([float1, float2, float3])
 q, pi = solver(
     true_embedding,
     jnp.array([0.0]),

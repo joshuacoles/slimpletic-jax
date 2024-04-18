@@ -50,7 +50,7 @@ history = model.fit(
     x,
     y,
     epochs=4,
-    batch_size=256,
+    batch_size=512,
     validation_split=0.2,
 )
 
