@@ -41,7 +41,7 @@ x, y = load_nn_data(
     filter_bad_data=True,
     maximum_value=10 ** 5,
     timestep_cap=TRAINING_TIMESTEPS,
-    datasize_cap=1_000_000
+    datasize_cap=512
 )
 #
 # jax.profiler.start_trace("/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/data/logs", create_perfetto_link=True)
@@ -57,7 +57,7 @@ history = model.fit(
 hist_df = pd.DataFrame(history.history)
 
 key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-model_data_root = project_data_root.joinpath("key")
+model_data_root = project_data_root.joinpath(key)
 model_data_root.mkdir(parents=True, exist_ok=True)
 
 # or save to csv:
