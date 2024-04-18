@@ -24,6 +24,7 @@ class PhysicsLoss(keras.layers.Layer):
     """
     A massive hack of adding
     """
+
     def loss_fn(self, x, y_pred):
         q_true, pi_true = x[:, :, 0], x[:, :, 1]
         q_predicted, pi_predicted = vmapped_solve(y_pred)
@@ -43,9 +44,11 @@ class PhysicsLoss(keras.layers.Layer):
 
         return inputs[1]
 
-model = keras.models.load_model('/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/neural_networks/model.keras', custom_objects={
-    'PhysicsLoss': PhysicsLoss
-})
+
+model = keras.models.load_model(
+    '/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/neural_networks/model.keras', custom_objects={
+        'PhysicsLoss': PhysicsLoss
+    })
 
 solver = setup_solver(
     family=lookup_family('dho'),
@@ -61,7 +64,10 @@ q, pi = solver(
 )
 
 # Reshape to match model input
-model_input = jnp.concatenate([q, pi], axis=-1).reshape(
+model_input = jnp.concatenate([
+    q[:TRAINING_TIMESTEPS],
+    pi[:TRAINING_TIMESTEPS]
+], axis=-1).reshape(
     (1, model.input_shape[1], model.input_shape[2])
 )
 
@@ -94,4 +100,3 @@ plt.plot(t, pred_pi, label="Predicted")
 
 plt.legend()
 plt.show()
-

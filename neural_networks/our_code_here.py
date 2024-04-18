@@ -91,7 +91,7 @@ def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.D
     return train_dataset, val_dataset
 
 
-def load_data_wrapped(family, dataName, timestep_cap):
+def load_data_wrapped(family, dataName, timestep_cap, datasize_cap = None):
     maximum_value = 10 ** 5
     # Load data
     x, y = load_nn_data(family, dataName)
@@ -101,6 +101,11 @@ def load_data_wrapped(family, dataName, timestep_cap):
     x = x[x_mask]
     y = y[y_mask]
     x = x[:, :timestep_cap + 1, :]
+
+    if datasize_cap is not None:
+        x = x[:datasize_cap]
+        y = y[:datasize_cap]
+
     return x, y
 
 
