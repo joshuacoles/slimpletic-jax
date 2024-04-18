@@ -7,30 +7,32 @@ from neural_networks.data import project_data_root
 
 # This guide can only be run with the jax backend.
 os.environ["KERAS_BACKEND"] = "jax"
-
 import jax
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_debug_nans", True)
-
 import keras
-from our_code_here import get_data, loss_fn, get_model, EPOCHS, BATCH_SIZE, dataName, family, SHUFFLE_SEED, \
+from our_code_here import get_data, loss_fn, get_model, EPOCHS, BATCH_SIZE, dataFiles, family, SHUFFLE_SEED, \
     TRAINING_TIMESTEPS
 
-train_dataset, val_dataset = get_data(BATCH_SIZE)
-model = get_model()
 
-# Instantiate an optimizer to train the model.
-optimizer = keras.optimizers.Adam(learning_rate=5*1e-4)
+def model_setup():
+    model = get_model()
 
-# Prepare the metrics.
-train_acc_metric = keras.metrics.CategoricalAccuracy()
-val_acc_metric = keras.metrics.CategoricalAccuracy()
+    # Instantiate an optimizer to train the model.
+    optimizer = keras.optimizers.Adam(learning_rate=5 * 1e-4)
+
+    # Prepare the metrics.
+    train_acc_metric = keras.metrics.CategoricalAccuracy()
+    val_acc_metric = keras.metrics.CategoricalAccuracy()
+
+    return model, optimizer, train_acc_metric, val_acc_metric
 
 
-def compute_loss_and_updates(
-        trainable_variables, non_trainable_variables, metric_variables, x, y
-):
+model, optimizer, train_acc_metric, val_acc_metric = model_setup()
+
+
+def compute_loss_and_updates(trainable_variables, non_trainable_variables, metric_variables, x, y):
     # jax.debug.print("trainable_variables {}", non_trainable_variables)
     # jax.debug.print("non_trainable_variables {}", non_trainable_variables)
 
@@ -107,16 +109,19 @@ def eval_step(state, data):
 # Build optimizer variables.
 optimizer.build(model.trainable_variables)
 
-trainable_variables = model.trainable_variables
-non_trainable_variables = model.non_trainable_variables
-optimizer_variables = optimizer.variables
-metric_variables = train_acc_metric.variables
-state = (
-    trainable_variables,
-    non_trainable_variables,
-    optimizer_variables,
-    metric_variables,
-)
+
+def get_state():
+    trainable_variables = model.trainable_variables
+    non_trainable_variables = model.non_trainable_variables
+    optimizer_variables = optimizer.variables
+    metric_variables = train_acc_metric.variables
+    return (
+        trainable_variables,
+        non_trainable_variables,
+        optimizer_variables,
+        metric_variables,
+    )
+
 
 data_dir = project_data_root.joinpath("training_data").joinpath(datetime.datetime.now().isoformat())
 data_dir.mkdir(parents=True)
@@ -126,21 +131,24 @@ val_loss_data = open(data_dir.joinpath("val_loss.csv"), "w")
 loss_data.write("epoch,step,loss,accuracy\n")
 val_loss_data.write("epoch,step,loss,accuracy\n")
 
-json.dump({
-    "data_name": dataName,
-    "family": family.key,
-    "epochs": EPOCHS,
-    "training_timesteps": TRAINING_TIMESTEPS,
-    "batch_size": BATCH_SIZE,
-    "shuffle_seed": SHUFFLE_SEED,
-}, open(data_dir.joinpath("config.json"), "w"))
+# json.dump({
+#     "data_name": dataName,
+#     "family": family.key,
+#     "epochs": EPOCHS,
+#     "training_timesteps": TRAINING_TIMESTEPS,
+#     "batch_size": BATCH_SIZE,
+#     "shuffle_seed": SHUFFLE_SEED,
+# }, open(data_dir.joinpath("config.json"), "w"))
 
-for epoch in range(EPOCHS):
-    # Training loop
+
+def convert_data(data):
+    return (data[0].numpy(), data[1].numpy())
+
+
+def training_loop(epoch, state, train_dataset):
     for step, data in enumerate(train_dataset):
-        data = (data[0].numpy(), data[1].numpy())
+        data = convert_data(data)
         loss, state = train_step(state, data)
-
         if step % 1000 == 0:
             print(f"{epoch}: Training loss (for 1 batch) at batch {step}: {float(loss):.4f}")
             _, _, _, metric_variables = state
@@ -151,22 +159,12 @@ for epoch in range(EPOCHS):
             loss_data.write(f"{epoch},{step},{float(loss)},{train_acc_metric.result()}\n")
             loss_data.flush()
 
-    metric_variables = val_acc_metric.variables
+    return state
 
-    print(metric_variables)
 
-    (
-        trainable_variables,
-        non_trainable_variables,
-        optimizer_variables,
-        metric_variables,
-    ) = state
-
-    val_state = (trainable_variables, non_trainable_variables, metric_variables)
-
-    # Eval loop
+def eval_loop(epoch, val_dataset, val_state):
     for step, data in enumerate(val_dataset):
-        data = (data[0].numpy(), data[1].numpy())
+        data = convert_data(data)
         loss, val_state = eval_step(val_state, data)
         # Log every 100 batches.
         if step % 100 == 0:
@@ -179,5 +177,27 @@ for epoch in range(EPOCHS):
             val_loss_data.write(f"{epoch},{step},{float(loss)},{val_acc_metric.result()}\n")
             val_loss_data.flush()
 
-    # Save model
-    keras.models.save_model(model, data_dir.joinpath(f"model_{epoch}.keras"))
+
+def main(state):
+    for epoch in range(EPOCHS):
+        # Training loop
+        for dataName in dataFiles:
+            train_dataset, val_dataset = get_data(BATCH_SIZE, dataName)
+            state = training_loop(epoch, state, train_dataset)
+
+            metric_variables = val_acc_metric.variables
+
+            print(metric_variables)
+
+            (trainable_variables, non_trainable_variables, optimizer_variables, metric_variables) = state
+
+            val_state = (trainable_variables, non_trainable_variables, metric_variables)
+
+            # Eval loop
+            eval_loop(epoch, val_dataset, val_state)
+
+        # Save model
+        keras.models.save_model(model, data_dir.joinpath(f"model_{epoch}.keras"))
+
+
+main(get_state())

@@ -7,12 +7,12 @@ from neural_networks.data.families import dho
 from neural_networks.data.generate_data_impl import setup_solver
 from neural_networks.data import load_nn_data
 
-dataName = "physical-accurate-large-data-0"
+dataFiles = ["physical-accurate-small-data-0","physical-accurate-small-data-1","physical-accurate-small-data-2","physical-accurate-small-data-3"]
 family = dho
 
 # Training Variables: Can be changed
-EPOCHS = 10
-TRAINING_TIMESTEPS = 20
+EPOCHS = 2
+TRAINING_TIMESTEPS = 10
 BATCH_SIZE = 128
 SHUFFLE_SEED = None
 
@@ -63,7 +63,7 @@ def get_model() -> keras.Model:
     return create_model(layers, units, regulariser, dropout)
 
 
-def get_data(batch_size: int) -> tuple[tf.data.Dataset, tf.data.Dataset]:
+def get_data(batch_size: int, dataName) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     # Reserve 10,000 samples for validation.
     validation_cutoff = 10_000
     maximum_value = 10 ** 5
