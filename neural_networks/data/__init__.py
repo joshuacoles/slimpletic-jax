@@ -1,3 +1,4 @@
+from typing import Union
 import sys
 from pathlib import Path
 from typing import Union
@@ -34,7 +35,7 @@ def save_nn_data(
     jnp.save(data_dir.joinpath("y"), lagrangian_embeddings)
 
 
-def filter_bad_trajectories(x, y, maximum_value: float | None = None):
+def filter_bad_trajectories(x, y, maximum_value: Union[float, None] = None):
     """
     Filter out rows with infinite or NaN, or over maximum values from the data.
     """
@@ -58,8 +59,8 @@ def load_nn_data(
         population_name: str,
         filter_bad_data: bool = True,
         maximum_value: float = 10 ** 5,
-        timestep_cap: int | None = None,
-        datasize_cap: int | None = None,
+        timestep_cap: Union[int, None] = None,
+        datasize_cap: Union[int, None] = None,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Load the data for a given family and population name. Will overwrite the data if it already exists.

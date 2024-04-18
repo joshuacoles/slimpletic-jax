@@ -41,7 +41,7 @@ x, y = load_nn_data(
     filter_bad_data=True,
     maximum_value=10 ** 5,
     timestep_cap=TRAINING_TIMESTEPS,
-    datasize_cap=512
+    datasize_cap=1_000_000
 )
 #
 # jax.profiler.start_trace("/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/data/logs", create_perfetto_link=True)
