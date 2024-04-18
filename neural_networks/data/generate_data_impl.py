@@ -32,6 +32,7 @@ def setup_solver(family: Family, iterations: int) -> Callable[[jnp.ndarray, jnp.
 
     def solve(embedding, q0, pi0):
         print("PANDAS Recompiled!!")
+        print(embedding.shape, q0.shape, pi0.shape)
         return embedded_system_solver.integrate(
             q0=q0,
             pi0=pi0,

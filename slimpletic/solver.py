@@ -223,17 +223,22 @@ class SolverScan(Solver):
                   additional_data=None):
         print("PANDAS SolverScan.integrate recompiled")
         self.verify_args(q0, pi0, t0, iterations, result_orientation)
+        print("PANDAS SolverScan.integrate verified")
 
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
         # NOTE: We use np.arange over jnp.arange as iterations is a static argument and np.arange seems to be faster.
         t_samples = t0 + (1 + np.arange(iterations)) * self.system.dt
 
+        print("PANDAS SolverScan.integrate t_samples computed")
+
         _, (q, pi) = jax.lax.scan(
             f=lambda *args: self.system.compute_next(*args, additional_data=additional_data),
             xs=t_samples,
             init=(q0, pi0),
         )
+
+        print("PANDAS SolverScan.integrate scanned")
 
         q_with_initial = jnp.append(jnp.array([q0]), q, axis=0)
         pi_with_initial = jnp.append(jnp.array([pi0]), pi, axis=0)
