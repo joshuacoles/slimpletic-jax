@@ -11,6 +11,10 @@ class Family:
     k_potential: Union[callable, None]
     embedding_shape: tuple[int]
 
+    @staticmethod
+    def from_key(key: str):
+        return lookup_family(key)
+
 
 dho = Family(
     'dho',
@@ -40,10 +44,11 @@ power_series_with_prefactor = Family(
 aengus_original = Family(
     'aengus_original',
     lambda q, v, _, an: jax.lax.fori_loop(0, 2,
-                             lambda i, acc: acc + (an[2 * i] * q[0] ** (i + 1)) + (an[2 * i + 1] * v[0] ** (i + 1)),
-                             0.0),
+                                          lambda i, acc: acc + (an[2 * i] * q[0] ** (i + 1)) + (
+                                                      an[2 * i + 1] * v[0] ** (i + 1)),
+                                          0.0),
     None,
-    (4, )
+    (4,)
 )
 
 families = {
