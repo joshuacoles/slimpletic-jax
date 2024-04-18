@@ -6,9 +6,12 @@ from jax import numpy as jnp
 
 from neural_networks.data import Family, lookup_family
 from neural_networks.data.generate_data_impl import setup_solver
-from neural_networks.our_code_here import rms
 
 PHYSICAL_COMPONENT_LOSS_MAXIMUM = 10 ** 15
+
+
+def rms(x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+    return jnp.sqrt(jnp.mean((x1 - x2) ** 2))
 
 
 @keras.saving.register_keras_serializable()

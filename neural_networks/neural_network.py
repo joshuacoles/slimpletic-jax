@@ -8,7 +8,8 @@ import keras
 
 from neural_networks.data.families import dho
 from neural_networks.our_code_here import TRAINING_TIMESTEPS, \
-    load_data_wrapped, create_layer
+    create_layer
+from neural_networks.data import load_data_wrapped
 
 family = dho
 
