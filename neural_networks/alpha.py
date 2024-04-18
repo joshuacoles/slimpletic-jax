@@ -17,35 +17,27 @@ family = dho
 
 class CustomModel(keras.Sequential):
     def __init__(self):
-        super().__init__([
-            keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2)),
-
-            keras.layers.LSTM(units=50, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                              return_sequences=True,
-                              kernel_regularizer=keras.regularizers.L1L2()),
-
-            keras.layers.LSTM(units=25, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                              return_sequences=True,
-                              kernel_regularizer=keras.regularizers.L1L2()),
-
-            keras.layers.LSTM(units=15, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                              return_sequences=True,
-                              kernel_regularizer=keras.regularizers.L1L2()),
-
-            keras.layers.LSTM(units=5, input_shape=(TRAINING_TIMESTEPS + 1, 2),
-                              return_sequences=True,
-                              kernel_regularizer=keras.regularizers.L1L2()),
-
-            keras.layers.Dropout(0.5),
-            keras.layers.Flatten(),
-            keras.layers.Dense(family.embedding_shape[0])
-        ])
+        super().__init__(
+            create_model_layers(
+                layers=5,
+                units=[50, 25, 15, 10, 5],
+                regulariser=[1, 1, 1, 1, 1],
+                dropout=0.10
+            )
+        )
 
         self.loss_tracker = keras.metrics.Mean(name="loss")
         self.mae_metric = keras.metrics.MeanAbsoluteError(name="mae")
 
     def loss_fn(self, x, y_true, y_pred):
-        return jnp.mean((y_true - y_pred) ** 2)
+        q_true, pi_true = x[:, :, 0], x[:, :, 1]
+        q_predicted, pi_predicted = vmapped_solve(y_pred)
+        q_predicted = q_predicted.reshape(q_true.shape)
+        pi_predicted = pi_predicted.reshape(pi_true.shape)
+
+        physical_loss = rms(q_predicted, q_true) + rms(pi_predicted, pi_true)
+
+        return physical_loss / 2
 
     def compute_loss_and_updates(
             self,
@@ -100,6 +92,7 @@ class CustomModel(keras.Sequential):
         loss_tracker_vars = self.loss_tracker.stateless_update_state(
             loss_tracker_vars, loss
         )
+
         mae_metric_vars = self.mae_metric.stateless_update_state(
             mae_metric_vars, y, y_pred
         )
@@ -145,3 +138,5 @@ model.fit(
     y,
     epochs=5
 )
+
+model.save("model.h5")
