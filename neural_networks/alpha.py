@@ -24,6 +24,18 @@ class CustomModel(keras.Sequential):
                               return_sequences=True,
                               kernel_regularizer=keras.regularizers.L1L2()),
 
+            keras.layers.LSTM(units=25, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                              return_sequences=True,
+                              kernel_regularizer=keras.regularizers.L1L2()),
+
+            keras.layers.LSTM(units=15, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                              return_sequences=True,
+                              kernel_regularizer=keras.regularizers.L1L2()),
+
+            keras.layers.LSTM(units=5, input_shape=(TRAINING_TIMESTEPS + 1, 2),
+                              return_sequences=True,
+                              kernel_regularizer=keras.regularizers.L1L2()),
+
             keras.layers.Dropout(0.5),
             keras.layers.Flatten(),
             keras.layers.Dense(family.embedding_shape[0])
