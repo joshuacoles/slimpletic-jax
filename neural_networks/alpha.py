@@ -9,14 +9,13 @@ import numpy as np
 import jax.numpy as jnp
 
 
-class CustomModel(keras.Model):
+class CustomModel(keras.Sequential):
     def __init__(self):
-        inputs = keras.Input(shape=(32,))
+        super().__init__([
+            keras.Input(shape=(32,)),
+            keras.layers.Dense(1)
+        ])
 
-        super().__init__(
-            inputs,
-            keras.layers.Dense(1)(inputs),
-        )
         self.loss_tracker = keras.metrics.Mean(name="loss")
         self.mae_metric = keras.metrics.MeanAbsoluteError(name="mae")
 
