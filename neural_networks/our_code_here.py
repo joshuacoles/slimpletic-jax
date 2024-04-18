@@ -3,6 +3,9 @@ import jax
 import jax.numpy as jnp
 import tensorflow as tf
 import sys
+
+from keras import Layer
+
 from neural_networks.data.families import dho
 from neural_networks.data.generate_data_impl import setup_solver
 from neural_networks.data import load_nn_data
@@ -33,37 +36,32 @@ def create_layer(unit: int, regularizer: bool):
                                  return_sequences=True)
 
 
-def create_model(layers: int, units: list[int], regulariser: list[int], dropout: float):
-    """
-    :param layers:
-    :param units:
-    :param regulariser:
-    :param dropout:
-    :return:
-    """
-    # lstm_layers = [[create_layer(units[-i], regulariser[-i] == 1), keras.layers.LayerNormalization()] for i in range(layers)]
+def create_model_layers(layers: int, units: list[int], regulariser: list[int], dropout: float) -> list[Layer]:
     lstm_layers = [[create_layer(units[-i], regulariser[-i] == 1)] for i in range(layers)]
     lstm_layers = [item for sublist in lstm_layers for item in sublist]
 
-    model = keras.Sequential([
+    return [
         keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2)),
         *lstm_layers,
         keras.layers.Dropout(dropout),
         keras.layers.Flatten(),
         keras.layers.Dense(units=family.embedding_shape[0])
-    ])
-    return model
+    ]
+
+
+def create_model(layers: int, units: list[int], regulariser: list[int], dropout: float):
+    return keras.Sequential(create_model_layers(layers, units, regulariser, dropout))
 
 
 def get_model() -> keras.Model:
     layers = 5
     units = [50, 40, 30, 20, 10]
     regulariser = [1, 1, 1, 1, 1]
-    dropout = 0.5
+    dropout = 0.10
     return create_model(layers, units, regulariser, dropout)
 
 
-def get_data(batch_size: int, dataName) -> tuple[tf.data.Dataset, tf.data.Dataset]:
+def get_data(batch_size: int, dataName: str) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     # Reserve 10,000 samples for validation.
     validation_cutoff = 10_000
     maximum_value = 10 ** 5
@@ -124,6 +122,6 @@ def loss_fn(true_trajectory: jnp.ndarray, predicted_embedding: jnp.ndarray, true
     q_predicted = q_predicted.reshape(q_true.shape)
     pi_predicted = pi_predicted.reshape(pi_true.shape)
 
-    physical_loss = rms(q_predicted, q_true) + rms(pi_predicted,pi_true)
+    physical_loss = rms(q_predicted, q_true) + rms(pi_predicted, pi_true)
 
-    return physical_loss/2
+    return physical_loss / 2
