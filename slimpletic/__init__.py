@@ -11,3 +11,14 @@ __all__ = [
     'SolverManual',
     'SolverScan',
 ]
+
+
+def make_solver(r, lagrangian, k_potential, dt):
+    return SolverScan(
+        DiscretisedSystem(
+            dt=dt,
+            ggl_bundle=GGLBundle(r=r),
+            lagrangian=lagrangian,
+            k_potential=k_potential
+        )
+    )
