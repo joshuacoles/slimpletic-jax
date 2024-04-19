@@ -11,8 +11,11 @@ from neural_networks.data.generate_data_impl import setup_solver
 PHYSICAL_COMPONENT_LOSS_MAXIMUM = 10 ** 15
 
 
-def rms(x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
-    return jnp.sqrt(jnp.mean((x1 - x2) ** 2))
+def rms(x1: jnp.ndarray, x2: jnp.ndarray, weightings: Union[jnp.ndarray, None] = None) -> jnp.ndarray:
+    if weightings is not None:
+        return jnp.sqrt(jnp.mean(jnp.inner(weightings, (x1 - x2) ** 2), axis=0))
+    else:
+        return jnp.sqrt(jnp.mean((x1 - x2) ** 2))
 
 
 @keras.saving.register_keras_serializable()
@@ -64,8 +67,9 @@ class PhysicsLoss(keras.layers.Layer):
         q_predicted = q_predicted.reshape(q_true.shape)
         pi_predicted = pi_predicted.reshape(pi_true.shape)
 
-        rms_q = jnp.clip(rms(q_predicted, q_true), 0, PHYSICAL_COMPONENT_LOSS_MAXIMUM)
-        rms_pi = jnp.clip(rms(pi_predicted, pi_true), 0, PHYSICAL_COMPONENT_LOSS_MAXIMUM)
+        weightings = jnp.arange(self.timesteps, 0, -1)
+        rms_q = jnp.clip(rms(q_predicted, q_true, weightings), 0, PHYSICAL_COMPONENT_LOSS_MAXIMUM)
+        rms_pi = jnp.clip(rms(pi_predicted, pi_true, weightings), 0, PHYSICAL_COMPONENT_LOSS_MAXIMUM)
 
         physical_loss = (rms_q + rms_pi) / 2
         non_negatives = jnp.mean(jax.lax.select(y_pred < 0, jnp.exp(-10 * y_pred), jnp.zeros_like(y_pred)))
