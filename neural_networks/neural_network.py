@@ -13,7 +13,7 @@ from neural_networks.data.families import dho
 from neural_networks.our_code_here import create_layer
 from neural_networks.data import project_data_root, load_nn_data
 
-TRAINING_TIMESTEPS = 100
+TRAINING_TIMESTEPS = 20
 family = dho
 
 inputs = keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2))

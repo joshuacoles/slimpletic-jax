@@ -11,13 +11,19 @@ import jax.numpy as jnp
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Get the path from the first argument
-path = sys.argv[1]
+if len(sys.argv) > 1:
+    # Get the path from the first argument
+    path = sys.argv[1]
 
-# Get the three floats from the command line arguments
-float1 = float(sys.argv[2])
-float2 = float(sys.argv[3])
-float3 = float(sys.argv[4])
+    # Get the three floats from the command line arguments
+    float1 = float(sys.argv[2])
+    float2 = float(sys.argv[3])
+    float3 = float(sys.argv[4])
+else:
+    path = "/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/data/2024-04-19-11-01-23/model.keras"
+    float1 = 1.0
+    float2 = 1.0
+    float3 = 1.0
 
 model = keras.models.load_model(path)
 

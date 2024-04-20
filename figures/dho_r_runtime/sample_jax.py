@@ -11,37 +11,40 @@ from neural_networks.data.families import dho
 from slimpletic import SolverScan, DiscretisedSystem, GGLBundle
 
 current_datetime = datetime.datetime.now().isoformat()
-output_dir = project_data_root / 'figures' / 'dho_n_runtime' / current_datetime
+output_dir = project_data_root / 'figures' / 'dho_r_runtime' / current_datetime
 output_dir.mkdir(exist_ok=True, parents=True)
 
-jax_csv_out = open(output_dir.joinpath('jax.csv'), "w")
-jax_csv_out.write("iterations,computation_time,jit_time\n")
-
-r = 2
-dt = 0.1
-
-ggl_bundle = GGLBundle(r=r)
-# The system which will be used when computing the loss function.
-solver = SolverScan(DiscretisedSystem(
-    dt=dt,
-    ggl_bundle=ggl_bundle,
-    lagrangian=dho.lagrangian,
-    k_potential=dho.k_potential,
-    pass_additional_data=True
-))
-
 repeat_samples = 4
+
+fig_out = output_dir.joinpath('figure.png')
+jax_csv_out = open(output_dir.joinpath('jax.csv'), "w")
+jax_csv_out.write("r,computation_time,jit_time\n")
+
+dt = 0.1
+iterations = 500
+
+# Run the system once to warm up the JIT
 embedding = jnp.array([1.0, 1.0, 1.0])
 
 
-def sample_jax(iterations: int):
-    print(f"Running JAX with {iterations}")
+def sample_jax(r: int):
+    print(f"Running JAX with r={r}")
 
-    start_jit = time.time()
+    start_setup = time.time()
 
     for _ in range(repeat_samples):
         jax.clear_caches()
-        t = time.time()
+
+        ggl_bundle = GGLBundle(r=r)
+        # The system which will be used when computing the loss function.
+        solver = SolverScan(DiscretisedSystem(
+            dt=dt,
+            ggl_bundle=ggl_bundle,
+            lagrangian=dho.lagrangian,
+            k_potential=dho.k_potential,
+            pass_additional_data=True
+        ))
+
         solver.integrate(
             q0=jnp.array([1.0]),
             pi0=jnp.array([1.0]),
@@ -49,9 +52,8 @@ def sample_jax(iterations: int):
             iterations=iterations,
             additional_data=embedding
         )
-        print("Time for one integration", time.time() - t)
 
-    jit_time = (time.time() - start_jit) / repeat_samples
+    jit_time = (time.time() - start_setup) / repeat_samples
 
     print("Cache going into comp", solver.integrate._cache_size())
     start_computation = time.time()
@@ -68,11 +70,11 @@ def sample_jax(iterations: int):
     computation_time = (time.time() - start_computation) / repeat_samples
 
     # Write data eagerly to save stuff for if we have to early exit
-    jax_csv_out.write(f"{iterations},{computation_time},{jit_time}\n")
+    jax_csv_out.write(f"{r},{computation_time},{jit_time}\n")
     jax_csv_out.flush()
     return computation_time, jit_time
 
 
-iteration_points = 2 ** np.arange(4, 10, 0.5)
-jax_times = np.array([sample_jax(int(n)) for n in iteration_points])
+r_values = jnp.arange(10, 20, 1)
+jax_times = np.array([sample_jax(int(n)) for n in r_values])
 jax_csv_out.close()
