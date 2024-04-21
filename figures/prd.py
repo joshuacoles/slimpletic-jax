@@ -1,3 +1,5 @@
+import time
+
 from slimpletic import GGLBundle, DiscretisedSystem, SolverScan
 
 import jax.numpy as jnp
@@ -146,4 +148,4 @@ ax2.text(0.015, 1e-1, r'$\Delta t = 0.01$ yr', fontsize=18, color='black')
 ax2.tick_params(axis='both', which='major', labelsize=16)
 
 ax2.set_yticks([1e-12, 1e-9, 1e-6, 1e-3, 1e0])
-plt.show()
+fig2.savefig(f"{time.time()}-prd.pdf")

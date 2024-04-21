@@ -10,6 +10,7 @@ __all__ = [
     'SolverBatchedScan',
     'SolverManual',
     'SolverScan',
+    'make_solver'
 ]
 
 
