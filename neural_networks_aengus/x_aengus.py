@@ -1,5 +1,4 @@
 import os
-from functools import partial
 
 from neural_networks_aengus.data.generate_data_impl import setup_solver
 
@@ -8,7 +7,6 @@ os.environ["KERAS_BACKEND"] = "jax"
 
 import jax
 import keras
-import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
@@ -43,7 +41,7 @@ class PhysicsLoss(keras.layers.Layer):
 
         return inputs[1]
 
-model = keras.models.load_model('/Users/aengus/PycharmProjects/ai-physicist/neural_networks_aengus/ckpt/model_scaled_2.1/checkpoint.model.keras', custom_objects={
+model = keras.models.load_model('/Users/aengus/PycharmProjects/ai-physicist/neural_networks_aengus/ckpt/model_scaled_2.1.2/checkpoint.model.keras', custom_objects={
     'PhysicsLoss': PhysicsLoss
 })
 
@@ -53,7 +51,7 @@ solver = setup_solver(
 )
 
 # Generate data
-true_embedding = jnp.array([-2.0,4.0, 12.5])
+true_embedding = jnp.array([2.0,4.0,1.0])
 q, pi = solver(
     true_embedding,
     jnp.array([0.0]),

@@ -12,10 +12,10 @@ from neural_networks_aengus.our_code_here import rms, vmapped_solve, TRAINING_TI
     load_data_wrapped, create_layer
 
 family = dho
-loadModelName = "ckpt/model_scaled_2.1/checkpoint.model"
-newModelName = "model_scaled_2.1.2"
-LEARNING_RATE = 1e-5
-EPOCHS = 25
+loadModelName = "ckpt/model_scaled_2.1.2/checkpoint.model"
+newModelName = "model_scaled_2.1.3"
+LEARNING_RATE = 1e-7
+EPOCHS = 10
 NEW = False
 
 isExist = os.path.exists('ckpt')
@@ -38,7 +38,7 @@ class PhysicsLoss(keras.layers.Layer):
         rms_q = rms(q_predicted, q_true)
         rms_pi = rms(pi_predicted, pi_true)
 
-        physical_loss = 5 * jnp.clip(rms_q, 0, 1e15) + jnp.clip(rms_pi, 0, 1e15)
+        physical_loss = jnp.clip(rms_q, 0, 1e15) + jnp.clip(rms_pi, 0, 1e15)
         # physical_loss = rms_pi + rms_q
         # physical_loss = jnp.clip(rms_pi,0,1e15)
         non_negatives = jnp.mean(jax.lax.select(y_pred < -0.1, 20 * ((y_pred + 0.1) ** 2), jnp.zeros_like(y_pred)))
@@ -54,24 +54,21 @@ class PhysicsLoss(keras.layers.Layer):
         return inputs[1]
 
 
-inputs = keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2))
-lstm_1 = create_layer(50, True)(inputs)
-lstm_2 = create_layer(40, True)(lstm_1)
-lstm_3 = create_layer(20, True)(lstm_2)
-dropout = keras.layers.Dropout(0.15)(lstm_3)
-flatten = keras.layers.Flatten()(dropout)
-dense = keras.layers.Dense(units=dho.embedding_shape[0])(flatten)
-physics_layer = PhysicsLoss()([inputs, dense])
+def training_loop(family, dataName, model):
+    x, y = load_data_wrapped(family, dataName, TRAINING_TIMESTEPS)
+    model.fit(x, y, epochs=EPOCHS, batch_size=512, validation_split=0.1, callbacks=[model_checkpoint_callback], )
 
-model = keras.Model(
-    inputs=inputs,
-    outputs=physics_layer,
-)
+    return model
 
-model.compile(
-    optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-    metrics=["mae"]
-)
+
+def main(initial_model):
+    dataList = ["physical-accurate-small-data-0", ]
+    for data in dataList:
+        initial_model = training_loop(family, data, initial_model)
+
+    return initial_model
+
+
 checkpoint_filepath = 'ckpt/' + newModelName + '/checkpoint.model.keras'
 model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
     filepath=checkpoint_filepath,
@@ -79,26 +76,31 @@ model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
     mode='min',
     save_best_only=True)
 
-
-def training_loop(family, dataName, model):
-    x, y = load_data_wrapped(family, dataName, TRAINING_TIMESTEPS)
-    model.fit(x, y, epochs=EPOCHS, batch_size=256, validation_split=0.1, callbacks=[model_checkpoint_callback], )
-
-    return model
-
-
-def main(initial_model):
-    dataList = ["aengus-zeros", ]
-    for data in dataList:
-        initial_model = training_loop(family, data, initial_model)
-
-    return initial_model
-
-
 if __name__ == '__main__':
     if NEW == True:
+        inputs = keras.Input(shape=(TRAINING_TIMESTEPS + 1, 2))
+        lstm_1 = create_layer(50, True)(inputs)
+        lstm_2 = create_layer(40, True)(lstm_1)
+        lstm_3 = create_layer(20, True)(lstm_2)
+        dropout = keras.layers.Dropout(0.15)(lstm_3)
+        flatten = keras.layers.Flatten()(dropout)
+        dense = keras.layers.Dense(units=dho.embedding_shape[0])(flatten)
+        physics_layer = PhysicsLoss()([inputs, dense])
+
+        model = keras.Model(
+            inputs=inputs,
+            outputs=physics_layer,
+        )
+
+        model.compile(
+            optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+            metrics=["mae"]
+        )
+
         final_model = main(model)
     else:
-        final_model = main(keras.models.load_model(loadModelName + '.keras'))
+        final_model = main(keras.models.load_model(loadModelName + '.keras', custom_objects={
+            'PhysicsLoss': PhysicsLoss
+        }))
 
-    final_model.save('models/' + newModelName + ".keras")
+        final_model.save('models/' + newModelName + ".keras")
