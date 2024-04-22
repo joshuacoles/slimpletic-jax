@@ -79,17 +79,21 @@ print(f"Predicted embedding: {embedding[0]}")
 t = jnp.arange(0, len(q))
 
 # Plot
-plt.title("Q")
-plt.plot(t, q, label="True")
-plt.plot(t, pred_q, label="Predicted")
 
-plt.legend()
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+ax1.plot(t, q)
+ax1.plot(t, pred_q)
+ax1.set_title("Q")         # Title for the first subplot
+ax1.set_xlabel("t")                    # X-axis label for the first subplot
+ax1.set_ylabel("q")                    # Y-axis label for the first subplot
+
+ax2.plot(t, pi, label="True")
+ax2.plot(t, pred_pi, label="Predicted")
+ax2.set_title(r'$\pi$')       # Title for the second subplot
+ax2.set_xlabel("t")                    # X-axis label for the second subplot
+ax2.set_ylabel(r'$\pi')                # Y-axis label for the second subplot
+fig.legend()
+
+plt.tight_layout()
+plt.savefig("modelComp.jpg",format='jpg')
 plt.show()
-
-plt.title("Pi")
-plt.plot(t, pi, label="True")
-plt.plot(t, pred_pi, label="Predicted")
-
-plt.legend()
-plt.show()
-
