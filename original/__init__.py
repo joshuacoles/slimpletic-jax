@@ -12,16 +12,17 @@ def dho(m, k, ll, r):
 
     sys.discretize(L, K, r, method='explicit', verbose=True)
 
-    def call(iterations):
+    def call(iterations=None, q0=None, pi0=None, t=None):
         dt = 0.1 * np.sqrt(m / k)
-        tmax = iterations * np.sqrt(m / k)
-        t = dt * np.arange(0, int(tmax / dt) + 1)
+        if t is None:
+            tmax = iterations * np.sqrt(m / k)
+            t = dt * np.arange(0, int(tmax / dt) + 1)
 
         # Initial data (at t=0)
-        q0 = [1.]
-        pi0 = [0.25 * dt * k]
+        q0 = q0 or [1.]
+        pi0 = pi0 or [0.25 * dt * k]
 
         # Integrate the system
-        sys.integrate(q0, pi0, t, dt)
+        return sys.integrate(q0, pi0, t, dt)
 
     return call

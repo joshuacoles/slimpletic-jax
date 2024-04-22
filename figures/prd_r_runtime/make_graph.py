@@ -6,6 +6,7 @@ from matplotlib.ticker import MaxNLocator
 
 from neural_networks.data import project_data_root
 
+
 jax = pd.concat([
     pd.read_csv(project_data_root / "figures/dho_r_runtime/2024-04-20T15:21:31.310718/jax.csv"),
     pd.read_csv(project_data_root / "figures/dho_r_runtime/2024-04-20T16:11:07.435472/jax.csv"),

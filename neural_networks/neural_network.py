@@ -43,8 +43,6 @@ x, y = load_nn_data(
     timestep_cap=TRAINING_TIMESTEPS,
     datasize_cap=1_000_000
 )
-#
-# jax.profiler.start_trace("/Users/joshuacoles/Developer/checkouts/fyp/slimplectic-jax/data/logs", create_perfetto_link=True)
 
 history = model.fit(
     x,

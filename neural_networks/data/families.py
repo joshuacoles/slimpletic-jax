@@ -32,6 +32,13 @@ dho = Family(
     (3,)
 )
 
+dho_prefactor = Family(
+    'dho_prefactor',
+    lambda q, v, _, embedding: embedding[3] * (embedding[0] * (v[0] ** 2) - embedding[1] * (q[0] ** 2)),
+    lambda qp, qm, vp, vm, t, embedding: embedding[3] * (-embedding[2] * vp[0] * qm[0]),
+    (4,)
+)
+
 basic_power_series = Family(
     'basic_power_series',
     lambda q, v, _, embedding: embedding[0] * (q[0] ** 2) +
@@ -62,6 +69,7 @@ aengus_original = Family(
 
 families = {
     'dho': dho,
+    'dho_prefactor': dho_prefactor,
     'basic_power_series': basic_power_series,
     'power_series_with_prefactor': power_series_with_prefactor,
     'aengus_original': aengus_original,

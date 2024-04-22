@@ -218,6 +218,9 @@ class Solver:
 
 
 class SolverScan(Solver):
+    def time_domain(self, t0: float, iterations: int) -> jnp.ndarray:
+        return t0 + (1 + np.arange(iterations)) * self.system.dt
+
     @partial(jax.jit, static_argnums=(0, 4, 5))
     def integrate(self, q0: jnp.ndarray, pi0: jnp.ndarray, t0: float, iterations: int, result_orientation: str = 'time',
                   additional_data=None):
@@ -228,7 +231,7 @@ class SolverScan(Solver):
         # These are the values of t which we will sample the solution at. This does not include the initial value of t
         # as the initial state of the system is already known.
         # NOTE: We use np.arange over jnp.arange as iterations is a static argument and np.arange seems to be faster.
-        t_samples = t0 + (1 + np.arange(iterations)) * self.system.dt
+        t_samples = self.time_domain(t0, iterations)
 
         print("PANDAS SolverScan.integrate t_samples computed")
 

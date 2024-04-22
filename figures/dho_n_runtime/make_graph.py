@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from figures import figures_root
 from neural_networks.data import project_data_root
 
 jax = pd.read_csv(project_data_root / "dho_n_t/jax.csv")
@@ -33,4 +34,4 @@ ax.set_xscale('log')
 ax.set_yscale('log')
 fig.legend()
 
-plt.savefig(project_data_root / "figures" / "dho_n_runtime" / "figure.png")
+plt.show()
